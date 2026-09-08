@@ -466,6 +466,8 @@ private fun ConteudoDashboard(
             totalGasto = uiState.resumoMensal.totalGasto,
             totalBudget = totalBudget,
             numerosVisiveis = uiState.numerosVisiveis,
+            saldoDisponivel = uiState.saldoPositivo,  // ✅ Seu saldo de R$ 4.000,00
+            totalDividas = uiState.totalFaturas,      // ✅ Suas faturas de R$ 954,82
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -511,7 +513,9 @@ fun EstruturaGastosCard(
     totalGasto: Long,
     totalBudget: Long,
     numerosVisiveis: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    saldoDisponivel: Long = 0L,      // ✅ NOVO: seu saldo disponível
+    totalDividas: Long = 0L          // ✅ NOVO: faturas do mês
 ) {
     var animate by remember { mutableStateOf(false) }
     LaunchedEffect(gastosPorCategoria, totalGasto, totalBudget) {
@@ -597,8 +601,8 @@ fun EstruturaGastosCard(
                                     useCenter = false,
                                     style = Stroke(width = thickness, cap = StrokeCap.Butt)
                                 )
+                                startAngle += sweep  // ✅ MOVIDO PARA DENTRO DO IF - ESTAVA FORA!
                             }
-                            startAngle += sweep
                         }
                     }
 
@@ -607,7 +611,7 @@ fun EstruturaGastosCard(
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(text = totalGasto.formatarMoeda(numerosVisiveis), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(2.dp))
-                        Text(text = "de ${totalBudget.formatarMoeda(numerosVisiveis)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) // <--- USANDO `numerosVisiveis`
+                        Text(text = "de ${totalBudget.formatarMoeda(numerosVisiveis)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
@@ -624,7 +628,13 @@ fun EstruturaGastosCard(
                                 useCenter = false,
                                 style = Stroke(width = stroke, cap = StrokeCap.Round)
                             )
-                            val sweep = 360f * animatedUsed
+
+                            // ✅ CORRIGIDO: Percentual baseado em FATURAS / SALDO
+                            val percentualUsado = if (saldoDisponivel > 0L)
+                                (totalDividas.toFloat() / saldoDisponivel.toFloat() * 100f).toInt().coerceIn(0, 100)
+                            else 0
+
+                            val sweep = 360f * (percentualUsado / 100f)
                             drawArc(
                                 color = Color(0xFF1B6B4A),
                                 startAngle = -90f,
@@ -633,23 +643,30 @@ fun EstruturaGastosCard(
                                 style = Stroke(width = stroke, cap = StrokeCap.Round)
                             )
                         }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "${(animatedUsed * 100).toInt()}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF143045))
+                        Column(horizontalAlignment = Alignment.Start, modifier = Modifier.padding(start = 12.dp)) {
+                            // ✅ CORRIGIDO: Mostra percentual de FATURAS / SALDO
+                            val percentualUsado = if (saldoDisponivel > 0L)
+                                (totalDividas.toFloat() / saldoDisponivel.toFloat() * 100f).toInt().coerceIn(0, 100)
+                            else 0
+
+                            Text(text = "$percentualUsado%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF143045))
                             Text(text = "usado", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    val restante = (totalBudget - totalGasto).coerceAtLeast(0L)
+                    // ✅ CORRIGIDO: ORÇAMENTO = SALDO DISPONÍVEL
+                    val restante = (saldoDisponivel - totalDividas).coerceAtLeast(0L)
+
                     Column(horizontalAlignment = Alignment.Start, modifier = Modifier.padding(start = 12.dp)) {
                         Text(text = "ORÇAMENTO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(text = totalBudget.formatarMoeda(numerosVisiveis), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFF143045)) // <--- USANDO `numerosVisiveis`
+                        Text(text = saldoDisponivel.formatarMoeda(numerosVisiveis), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFF143045))
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = "de ${totalGasto.formatarMoeda(numerosVisiveis)} gastos", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = "de ${totalDividas.formatarMoeda(numerosVisiveis)} em faturas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(text = restante.formatarMoeda(numerosVisiveis), style = MaterialTheme.typography.bodySmall, color = Color(0xFF1B6B4A), fontWeight = FontWeight.SemiBold) // <--- USANDO `numerosVisiveis`
+                        Text(text = restante.formatarMoeda(numerosVisiveis), style = MaterialTheme.typography.bodySmall, color = Color(0xFF1B6B4A), fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
