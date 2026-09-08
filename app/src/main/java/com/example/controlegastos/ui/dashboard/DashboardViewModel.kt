@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.controlegastos.domain.model.ResumoMensal
+import com.example.controlegastos.domain.model.TipoContaSaldo
 import com.example.controlegastos.domain.repository.ContaSaldoRepository
 import com.example.controlegastos.domain.repository.DespesaRepository
 import com.example.controlegastos.domain.repository.CartaoRepository
@@ -46,22 +47,24 @@ class DashboardViewModel @Inject constructor(
 
     private val cartoesAtivosFlow = cartaoRepository.observarAtivos()
 
-    private val saldoPositivoFlow = contaSaldoRepository
+    private val totalSaldoFlow = contaSaldoRepository
         .observarTodas()
-        .map { contas -> contas.filter { it.ativo }.sumOf { it.saldoCentavos } }
+        .map { contas ->
+            contas
+                .asSequence()
+                .filter { conta ->
+                    conta.tipo == TipoContaSaldo.CONTA ||
+                            conta.tipo == TipoContaSaldo.SALDO_RESERVADO
+                }
+                .filter { conta ->
+                    conta.saldoCentavos > 0L
+                }
+                .sumOf { conta ->
+                    conta.saldoCentavos
+                }
+        }
 
-    private val faturasAbertasFlow = despesaRepository
-        .observarFaturasAbertasPorMes()
-        .map { faturas -> faturas.sumOf { it.totalCentavos } }
-
-    // ✅ CORRIGIDO: Usa o novo método que retorna Flow<Long> diretamente
-    private val receitasFlow = mesSelecionado.flatMapLatest { mesAno ->
-        despesaRepository
-            .observarTotalReceitasDoMes(mes = mesAno.monthValue, ano = mesAno.year)
-            .catch {
-                emit(0L)
-            }
-    }
+    private val totalDespesasCartaoFlow = despesaRepository.observarTotalDespesasCartao()
 
     val uiState: StateFlow<DashboardUiState> = combine(
         mesSelecionado,
@@ -80,19 +83,17 @@ class DashboardViewModel @Inject constructor(
             }.flatMapLatest { (resumo, gastosPorCategoria, despesas) ->
                 combine(
                     cartoesAtivosFlow,
-                    saldoPositivoFlow,
-                    faturasAbertasFlow,
-                    receitasFlow  // ✅ Agora fornece o Long correto
-                ) { cartoes, saldoPositivo, totalFaturas, totalReceitas ->
+                    totalSaldoFlow,
+                    totalDespesasCartaoFlow
+                ) { cartoes, totalSaldo, totalDespesas ->
                     DashboardUiState(
                         mesSelecionado = mesAno,
                         resumoMensal = resumo,
                         gastosPorCategoria = gastosPorCategoria,
                         transacoesDoMes = despesas.sortedByDescending { it.dataVencimento },
                         cartoes = cartoes,
-                        saldoPositivo = saldoPositivo,
-                        totalFaturas = totalFaturas,
-                        totalReceitas = totalReceitas,  // ✅ Agora correto
+                        totalSaldo = totalSaldo,
+                        totalDespesas = totalDespesas,
                         numerosVisiveis = valoresVisiveis,
                         nomeUsuario = nomeUsuario,
                         carregando = false
@@ -105,9 +106,8 @@ class DashboardViewModel @Inject constructor(
                             gastosPorCategoria = emptyList(),
                             transacoesDoMes = emptyList(),
                             cartoes = emptyList(),
-                            saldoPositivo = 0L,
-                            totalFaturas = 0L,
-                            totalReceitas = 0L,
+                            totalSaldo = 0L,
+                            totalDespesas = 0L,
                             numerosVisiveis = valoresVisiveis,
                             nomeUsuario = nomeUsuario,
                             carregando = false

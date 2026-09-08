@@ -14,6 +14,7 @@ import com.example.controlegastos.data.local.projection.ProjecaoMesTuple
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
+
 @Dao
 interface DespesaDao {
 
@@ -581,6 +582,18 @@ interface DespesaDao {
     ): LocalDate?
 
     // ✅ NOVO: Método para retornar TOTAL de receitas do mês
+
+
+    @Query(
+        """
+    SELECT COALESCE(SUM(valor), 0)
+    FROM tb_despesas
+    WHERE cartao_id IS NOT NULL
+      AND tipo_lancamento IN ('UNICA', 'PARCELADA')
+    """
+    )
+    fun observarTotalDespesasCartao(): Flow<Long>
+
     @Query(
         """
         SELECT COALESCE(SUM(valor), 0)

@@ -21,6 +21,8 @@ interface DespesaRepository {
 
     fun observarFaturasAbertasPorMes(): Flow<List<FaturaMensal>>
 
+    fun observarTotalDespesasCartao(): Flow<Long>
+
     fun observarDespesasDetalhadasDaFatura(
         mes: Int,
         ano: Int

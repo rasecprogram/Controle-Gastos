@@ -119,7 +119,10 @@ import androidx.compose.foundation.verticalScroll
 import java.text.NumberFormat
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.VerticalDivider
 import com.example.controlegastos.ui.components.BarraNavegacaoInferior
+
+
 
 
 private val CorCardSaldoAccent = Color(0xFF1B6B4A)
@@ -149,10 +152,9 @@ fun DashboardScreen(
             topBar = {
                 CardSaldoPrincipalNovo(
                     nomeUsuario = uiState.nomeUsuario,
-                    saldoAtual = uiState.saldoPositivo,
-                    receitas = uiState.totalReceitas,
-                    gastos = uiState.resumoMensal.totalGasto,
-                    totalFaturas = uiState.totalFaturas,
+                    saldoAtual = uiState.totalSaldo,
+                    totalSaldo = uiState.totalSaldo,
+                    totalDespesas = uiState.totalDespesas,
                     visivel = uiState.numerosVisiveis,
                     onAlternarVisibilidade = viewModel::alternarVisibilidadeValores,
                     onAbrirConfiguracoes = onAbrirConfiguracoes
@@ -228,11 +230,12 @@ fun DashboardScreen(
 @Composable
 fun CardSaldoPrincipalNovo(
     nomeUsuario: String,
+
     saldoAtual: Long,
-    receitas: Long,
-    gastos: Long,
-    totalFaturas: Long,
+    totalSaldo: Long,
+    totalDespesas: Long,
     visivel: Boolean,
+
     onAlternarVisibilidade: () -> Unit,
     onAbrirConfiguracoes: () -> Unit,
     modifier: Modifier = Modifier
@@ -356,23 +359,6 @@ fun CardSaldoPrincipalNovo(
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = (-1).sp
                 )
-
-                val aposPagar = (saldoAtual - totalFaturas).coerceAtLeast(0L)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "→ Após pagar faturas:",
-                        color = textoCinza,
-                        fontSize = 12.sp
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = aposPagar.formatarMoeda(visivel), // <--- USANDO `visivel` AQUI
-                        color = textoClaro,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Box(
@@ -384,59 +370,30 @@ fun CardSaldoPrincipalNovo(
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        // RECEITAS
-                        Column(
-                            horizontalAlignment = Alignment.Start,
-                            modifier = Modifier.weight(1f).padding(start = 14.dp, end = 2.dp)
-                        ) {
-                            Text(text = "RECEITAS", fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = textoCinza)
-                            Text(
-                                text = receitas.formatarMoeda(visivel), // <--- USANDO `visivel` AQUI
-                                fontSize = 13.sp,
-                                color = Color(0xFF55D4A3),
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                modifier = Modifier.offset(y = (-3).dp)
-                            )
-                        }
+                        IndicadorResumoFinanceiro(
+                            modifier = Modifier.weight(1f),
+                            titulo = "TOTAL SALDO",
+                            valor = totalSaldo,
+                            corValor = Color(0xFF72E3B1),
+                            visivel = visivel
+                        )
 
-                        Box(modifier = Modifier.width(1.dp).height(20.dp).background(Color.White.copy(alpha = 0.15f)))
+                        VerticalDivider(
+                            modifier = Modifier
+                                .height(44.dp)
+                                .padding(vertical = 2.dp),
+                            color = Color.White.copy(alpha = 0.12f)
+                        )
 
-                        // GASTOS
-                        Column(
-                            horizontalAlignment = Alignment.Start,
-                            modifier = Modifier.weight(1f).padding(start = 10.dp, end = 2.dp)
-                        ) {
-                            Text(text = "GASTOS", fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = textoCinza)
-                            Text(
-                                text = gastos.formatarMoeda(visivel), // <--- USANDO `visivel` AQUI
-                                fontSize = 13.sp,
-                                color = Color(0xFFFF9A9A),
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                modifier = Modifier.offset(y = (-3).dp)
-                            )
-                        }
-
-                        Box(modifier = Modifier.width(1.dp).height(20.dp).background(Color.White.copy(alpha = 0.15f)))
-
-                        // FATURAS
-                        Column(
-                            horizontalAlignment = Alignment.Start,
-                            modifier = Modifier.weight(1f).padding(start = 10.dp, end = 2.dp)
-                        ) {
-                            Text(text = "FATURAS", fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = textoCinza)
-                            Text(
-                                text = totalFaturas.formatarMoeda(visivel), // <--- USANDO `visivel` AQUI
-                                fontSize = 13.sp,
-                                color = Color(0xFFFFD166),
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                modifier = Modifier.offset(y = (-3).dp)
-                            )
-                        }
+                        IndicadorResumoFinanceiro(
+                            modifier = Modifier.weight(1f),
+                            titulo = "TOTAL DESPESAS",
+                            valor = totalDespesas,
+                            corValor = Color(0xFFFFA8A8),
+                            visivel = visivel
+                        )
                     }
                 }
             }
@@ -466,8 +423,8 @@ private fun ConteudoDashboard(
             totalGasto = uiState.resumoMensal.totalGasto,
             totalBudget = totalBudget,
             numerosVisiveis = uiState.numerosVisiveis,
-            saldoDisponivel = uiState.saldoPositivo,  // ✅ Seu saldo de R$ 4.000,00
-            totalDividas = uiState.totalFaturas,      // ✅ Suas faturas de R$ 954,82
+            saldoDisponivel = uiState.totalSaldo,
+            totalDividas = uiState.totalDespesas,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -686,7 +643,11 @@ fun EstruturaGastosCard(
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(text = saldoDisponivel.formatarMoeda(numerosVisiveis), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFF143045))
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = "de ${totalDividas.formatarMoeda(numerosVisiveis)} em faturas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = "de ${totalDividas.formatarMoeda(numerosVisiveis)} em despesas",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(text = restante.formatarMoeda(numerosVisiveis), style = MaterialTheme.typography.bodySmall, color = Color(0xFF1B6B4A), fontWeight = FontWeight.SemiBold)
                     }
@@ -775,6 +736,36 @@ private fun IconeCategoriaDinamico(
             contentDescription = null,
             tint = cor,
             modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun IndicadorResumoFinanceiro(
+    modifier: Modifier = Modifier,
+    titulo: String,
+    valor: Long,
+    corValor: Color,
+    visivel: Boolean
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = titulo,
+            color = Color.White.copy(alpha = 0.58f),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = valor.formatarMoeda(visivel),
+            color = corValor,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
         )
     }
 }

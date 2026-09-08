@@ -19,10 +19,8 @@ data class DashboardUiState(
     val transacoesDoMes: List<DespesaDetalhada> = emptyList(),
     val cartoes: List<Cartao> = emptyList(),
 
-    // NOVOS CAMPOS expostos para o Dashboard/card saldo
-    val saldoPositivo: Long = 0L,   // soma de saldos das contas ativas (centavos)
-    val totalFaturas: Long = 0L,    // soma das faturas abertas (centavos)
-    val totalReceitas: Long = 0L,   // placeholder (centavos) -- ajuste se tiver fonte de receitas
+    val totalSaldo: Long = 0L,
+    val totalDespesas: Long = 0L,
 
     val numerosVisiveis: Boolean = true,
     val nomeUsuario: String = "Você",

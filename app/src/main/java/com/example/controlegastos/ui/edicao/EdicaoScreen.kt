@@ -121,7 +121,9 @@ import java.util.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.foundation.layout.imePadding
-
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.text.style.TextAlign
 
 
 // ====== CORES / CONSTANTES DE ESTILO ======
@@ -2081,41 +2083,6 @@ private fun CartaoDetalhado(
 
    // === Para cartões normais: mostra resumo DISPONÍVEL / USADO / barra / limite / divider / edição ===
    if (!isPix) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-     Column(modifier = Modifier.weight(1f)) {
-      Text(text = "DISPONÍVEL", color = corLabelCinza, style = MaterialTheme.typography.labelSmall)
-      Text(
-       text = disponivelCentavos.formatarMoedaPtBr(),
-       color = CorEdicao,
-       style = MaterialTheme.typography.titleMedium,
-       fontWeight = FontWeight.Bold
-      )
-     }
-
-     Column(horizontalAlignment = Alignment.End) {
-      Text(text = "USADO", color = corLabelCinza, style = MaterialTheme.typography.labelSmall)
-      Text(
-       text = usadoCentavos.formatarMoedaPtBr(),
-       color = MaterialTheme.colorScheme.onSurface,
-       style = MaterialTheme.typography.bodyMedium
-      )
-     }
-    }
-
-    Spacer(Modifier.height(10.dp))
-
-    LinearProgressIndicator(
-     progress = progresso,
-     modifier = Modifier
-      .fillMaxWidth()
-      .height(8.dp)
-      .clip(RoundedCornerShape(6.dp)),
-     trackColor = Color(0xFFECEFF0),
-     color = CorEdicao
-    )
-
-    Spacer(Modifier.height(8.dp))
-
     Text(
      text = "Limite ${limiteCentavos.formatarMoedaPtBr()}",
      color = corLabelCinza,
@@ -2373,25 +2340,99 @@ private fun ConfirmacaoExcluirDialog(
 ) {
  AlertDialog(
   onDismissRequest = onDismiss,
-  title = { Text("Excluir cartão") },
+  shape = RoundedCornerShape(20.dp),
+  containerColor = Color.White,
+  title = {
+   Column(
+    modifier = Modifier
+     .fillMaxWidth()
+     .padding(top = 8.dp),
+    horizontalAlignment = Alignment.CenterHorizontally
+   ) {
+    Box(
+     modifier = Modifier
+      .size(52.dp)
+      .clip(CircleShape)
+      .background(Color(0xFFFDF2F2)),
+     contentAlignment = Alignment.Center
+    ) {
+     Icon(
+      imageVector = Icons.Default.DeleteOutline,
+      contentDescription = null,
+      tint = Color(0xFFD84315),
+      modifier = Modifier.size(26.dp)
+     )
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    Text(
+     text = "Excluir cartão?",
+     style = MaterialTheme.typography.titleLarge,
+     fontWeight = FontWeight.Bold,
+     color = Color(0xFF143045),
+     textAlign = TextAlign.Center
+    )
+   }
+  },
   text = {
    Text(
-    "Tem certeza que deseja excluir o cartão \"$cartaoNome\"? " +
-            "Essa ação não poderá ser desfeita."
+    text = "O cartão \"$cartaoNome\" será removido definitivamente. Esta ação não pode ser desfeita.",
+    style = MaterialTheme.typography.bodyMedium,
+    color = Color(0xFF8A929B),
+    textAlign = TextAlign.Center,
+    modifier = Modifier
+     .fillMaxWidth()
+     .padding(horizontal = 8.dp)
    )
   },
   confirmButton = {
-   TextButton(onClick = onConfirm) {
-    Text("Excluir", color = Color.Red)
+   Row(
+    modifier = Modifier
+     .fillMaxWidth()
+     .padding(horizontal = 8.dp, vertical = 8.dp),
+    horizontalArrangement = Arrangement.spacedBy(12.dp)
+   ) {
+    OutlinedButton(
+     onClick = onDismiss,
+     shape = RoundedCornerShape(12.dp),
+     border = BorderStroke(1.dp, Color(0xFFEBDFE3)),
+     colors = ButtonDefaults.outlinedButtonColors(
+      contentColor = Color(0xFF143045),
+      containerColor = Color.Transparent
+     ),
+     modifier = Modifier
+      .weight(1f)
+      .height(46.dp)
+    ) {
+     Text(
+      text = "Cancelar",
+      style = MaterialTheme.typography.titleMedium,
+      fontWeight = FontWeight.SemiBold
+     )
+    }
+
+    Button(
+     onClick = onConfirm,
+     shape = RoundedCornerShape(12.dp),
+     colors = ButtonDefaults.buttonColors(
+      containerColor = Color(0xFFD84315),
+      contentColor = Color.White
+     ),
+     modifier = Modifier
+      .weight(1f)
+      .height(46.dp)
+    ) {
+     Text(
+      text = "Excluir",
+      style = MaterialTheme.typography.titleMedium,
+      fontWeight = FontWeight.Bold
+     )
+    }
    }
   },
-  dismissButton = {
-   TextButton(onClick = onDismiss) {
-    Text("Cancelar")
-   }
-  }
- )
-}
+  dismissButton = {}
+ )}
 
 @Composable
 private fun EditorDatasCartao(

@@ -417,6 +417,10 @@ class DespesaRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun observarTotalDespesasCartao(): Flow<Long> {
+        return despesaDao.observarTotalDespesasCartao()
+    }
+
     private fun calcularInicioCiclo(
         ano: Int,
         mes: Int,
