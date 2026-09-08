@@ -475,18 +475,6 @@ interface DespesaDao {
         dataPagamento: LocalDate
     ): Int
 
-    /*
-     * Estas duas consultas são usadas quando o usuário paga uma fatura.
-     *
-     * O intervalo recebido deve ser o ciclo da fatura:
-     *
-     * fechamento dia 29, fatura de agosto:
-     * início = 30/07
-     * fim exclusivo = 30/08
-     *
-     * Assim, uma compra de 29/08 entra em agosto e uma compra de
-     * 30/08 entra em setembro.
-     */
     @Query(
         """
         SELECT COALESCE(SUM(valor), 0)
@@ -591,4 +579,28 @@ interface DespesaDao {
     suspend fun buscarDataVencimentoPorId(
         despesaId: Int
     ): LocalDate?
+
+    // ✅ NOVO: Método para retornar TOTAL de receitas do mês
+    @Query(
+        """
+        SELECT COALESCE(SUM(valor), 0)
+        FROM tb_despesas
+
+        WHERE tipo_lancamento = 'RECEITA'
+        AND data_compra >= (
+            CAST(
+                strftime('%s', printf('%04d-%02d-01', :ano, :mes)) AS INTEGER
+            ) * 1000
+        )
+        AND data_compra < (
+            CAST(
+                strftime('%s', printf('%04d-%02d-01', :ano, :mes), '+1 month') AS INTEGER
+            ) * 1000
+        )
+        """
+    )
+    fun observarTotalReceitasDoMes(
+        mes: Int,
+        ano: Int
+    ): Flow<Long>
 }

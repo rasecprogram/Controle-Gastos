@@ -67,6 +67,12 @@ interface DespesaRepository {
         dataFimEpoch: Long
     ): Flow<List<DespesaDetalhada>>
 
+    // ✅ NOVO: Retorna o TOTAL de receitas do mês
+    fun observarTotalReceitasDoMes(
+        mes: Int,
+        ano: Int
+    ): Flow<Long>
+
     suspend fun salvar(despesa: Despesa): Int
 
     suspend fun atualizar(despesa: Despesa): Boolean
@@ -81,12 +87,6 @@ interface DespesaRepository {
         dataPagamentoEpoch: Long
     ): Boolean
 
-    /*
-     * O mês recebido identifica a fatura exibida na tela.
-     *
-     * O repositório calcula o intervalo baseado no dia de fechamento
-     * do cartão, e não pelo mês de vencimento.
-     */
     suspend fun pagarFatura(
         cartaoId: Int,
         mes: Int,

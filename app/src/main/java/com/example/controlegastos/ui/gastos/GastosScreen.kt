@@ -458,6 +458,9 @@ fun GastosScreen(
                                             val percentualReal = rawPercents.getOrNull(index) ?: 0f
                                             val percentualAjustado = floorInts.getOrNull(index) ?: 0
 
+                                            // COR ÚNICA E GARANTIDA PELO ID
+                                            val corCategoria = corDinamicaCategoria(gasto.categoriaId)
+
                                             Column {
                                                 Row(
                                                     modifier = Modifier
@@ -466,8 +469,8 @@ fun GastosScreen(
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                     IconeCategoriaPill(
-                                                        iconeChave = gasto.iconeChave,
-                                                        corHex = gasto.corHex
+                                                        categoriaId = gasto.categoriaId,
+                                                        iconeChave = gasto.iconeChave
                                                     )
 
                                                     Spacer(modifier = Modifier.width(12.dp))
@@ -514,7 +517,7 @@ fun GastosScreen(
                                                             .fillMaxWidth(animatedFraction)
                                                             .height(8.dp)
                                                             .clip(RoundedCornerShape(6.dp))
-                                                            .background(gasto.corHex.toComposeColor())
+                                                            .background(corCategoria) // BARRA DE PROGRESSO COLORIDA
                                                     )
                                                 }
 
@@ -720,13 +723,10 @@ private fun LancamentoItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // ícone da categoria — tenta usar drawable/iconeChave presente na categoria cadastrado
-            // OBS: DespesaDetalhada atualmente NÃO contém iconeChave; se você mapeou a projeção para
-            // incluir icone da categoria (recomendo), substitua `categoriaIconeChave` pelo campo correto.
-            // Aqui uso o nome da categoria para derivar chave (fallback).
+            // 👇 CORREÇÃO AQUI: Adicionar o parâmetro categoriaId
             IconeCategoriaPill(
-                iconeChave = despesa.categoriaIconeChave,
-                corHex = despesa.categoriaCorHex
+                categoriaId = despesa.categoriaId,
+                iconeChave = despesa.categoriaIconeChave
             )
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -762,7 +762,6 @@ private fun LancamentoItem(
 
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 6.dp)) {
                             if (resIdCard != 0) {
-                                // Drawable do cartão existe -> mostra imagem e o nome ao lado
                                 Image(
                                     painter = painterResource(id = resIdCard),
                                     contentDescription = cartao.nome,
@@ -779,7 +778,6 @@ private fun LancamentoItem(
                                     maxLines = 1
                                 )
                             } else {
-                                // Fallback: sigla dentro de pill (mantive seu layout anterior)
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
@@ -814,10 +812,21 @@ private fun LancamentoItem(
     }
 }
 
+private fun corDinamicaCategoria(categoriaId: Int): Color {
+    val hue = ((categoriaId * 137.5f) % 360f).coerceIn(0f, 360f)
+    return Color.hsl(hue = hue, saturation = 0.65f, lightness = 0.50f)
+}
+
+private fun gerarCorPorId(id: Int): Color {
+    // Multiplica por um fator primo para espalhar bem os tons no círculo cromático
+    val hue = ((id * 137.5f) % 360f).coerceIn(0f, 360f)
+    return Color.hsl(hue = hue, saturation = 0.65f, lightness = 0.50f)
+}
+
 @Composable
 private fun IconeCategoriaPill(
-    iconeChave: String?,
-    corHex: String
+    categoriaId: Int,
+    iconeChave: String?
 ) {
     val chave = iconeChave ?: ""
     val context = LocalContext.current
@@ -825,11 +834,8 @@ private fun IconeCategoriaPill(
         if (chave.isBlank()) 0 else context.resources.getIdentifier(chave, "drawable", context.packageName)
     }
 
-    val cor = try {
-        Color(android.graphics.Color.parseColor(corHex))
-    } catch (_: Exception) {
-        CorGastos
-    }
+    // Pega a cor exclusiva gerada pelo ID
+    val cor = corDinamicaCategoria(categoriaId)
 
     if (resId != 0) {
         Icon(
@@ -843,7 +849,6 @@ private fun IconeCategoriaPill(
                 .padding(6.dp)
         )
     } else if (chave.isNotBlank() && chave.any { it.code > 255 }) {
-        // emoji
         Box(
             modifier = Modifier
                 .size(36.dp)
@@ -854,7 +859,6 @@ private fun IconeCategoriaPill(
             Text(text = chave, fontSize = 18.sp)
         }
     } else {
-        // fallback para ícone vetorial mapeado a partir da chave (ou name derivado)
         val chaveDerivada = if (chave.isNotBlank()) chave else chaveDaCategoriaAPartirDoNome("")
         Box(
             modifier = Modifier

@@ -8,6 +8,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
+
+private fun String?.formatarCorHexSegura(): String {
+    if (this.isNullOrBlank()) return "#5F8D84"
+    val corLimpa = this.trim()
+    return if (corLimpa.startsWith("#")) corLimpa else "#$corLimpa"
+}
 class CategoriaRepositoryImpl @Inject constructor(
     private val categoriaDao: CategoriaDao
 ) : CategoriaRepository {
@@ -49,7 +55,8 @@ class CategoriaRepositoryImpl @Inject constructor(
     private fun CategoriaEntity.toDomain() = Categoria(
         id = id,
         nome = nome,
-        corHex = corHex,
+        // 👇 ALTERAÇÃO AQUI: Formatar a cor de forma segura
+        corHex = corHex.formatarCorHexSegura(),
         tetoMensal = tetoMensal,
         iconeChave = iconeChave,
         ativa = ativa

@@ -507,6 +507,20 @@ private fun ConteudoDashboard(
     }
 }
 
+
+private val PaletaDinamica = listOf(
+    Color(0xFF5F8D84), // Verde original
+    Color(0xFFE57373), // Vermelho
+    Color(0xFF64B5F6), // Azul
+    Color(0xFFFFB74D), // Laranja
+    Color(0xFFBA68C8), // Roxo
+    Color(0xFF4DB6AC), // Ciano
+    Color(0xFFF06292), // Rosa
+    Color(0xFF81C784), // Verde claro
+    Color(0xFFFFD54F), // Amarelo
+    Color(0xFF7986CB)  // Indigo
+)
+
 @Composable
 fun EstruturaGastosCard(
     gastosPorCategoria: List<GastoPorCategoria>,
@@ -514,8 +528,8 @@ fun EstruturaGastosCard(
     totalBudget: Long,
     numerosVisiveis: Boolean,
     modifier: Modifier = Modifier,
-    saldoDisponivel: Long = 0L,      // ✅ NOVO: seu saldo disponível
-    totalDividas: Long = 0L          // ✅ NOVO: faturas do mês
+    saldoDisponivel: Long = 0L,
+    totalDividas: Long = 0L
 ) {
     var animate by remember { mutableStateOf(false) }
     LaunchedEffect(gastosPorCategoria, totalGasto, totalBudget) {
@@ -524,6 +538,7 @@ fun EstruturaGastosCard(
     }
 
     val totalCategorias = gastosPorCategoria.sumOf { it.totalGasto }
+    val qtdCategoriasNaLista = gastosPorCategoria.size.coerceAtLeast(1) // Evita divisão por zero
 
     val rawPercents = gastosPorCategoria.map { gasto ->
         if (totalCategorias > 0L) gasto.totalGasto.toFloat() / totalCategorias.toFloat() * 100f else 0f
@@ -582,6 +597,7 @@ fun EstruturaGastosCard(
                         val thickness = 22.dp.toPx()
                         var startAngle = -90f
 
+                        // Fundo cinza
                         drawArc(
                             color = Color(0xFFEEF0F2),
                             startAngle = 0f,
@@ -590,19 +606,28 @@ fun EstruturaGastosCard(
                             style = Stroke(width = thickness, cap = StrokeCap.Butt)
                         )
 
-                        gastosPorCategoria.forEach { gasto ->
-                            val sweep = if (totalCategorias > 0L) (gasto.totalGasto.toFloat() / totalCategorias.toFloat() * 360f) else 0f
+                        for (idx in gastosPorCategoria.indices) {
+                            val gasto = gastosPorCategoria[idx]
+
+                            // 👇 USA O ID EM VEZ DO ÍNDICE PARA A COR SER SEMPRE A MESMA
+                            val hue = ((gasto.categoriaId * 137.5f) % 360f).coerceIn(0f, 360f)
+                            val corCategoria = Color.hsl(hue = hue, saturation = 0.65f, lightness = 0.50f)
+
+                            val sweep = if (totalCategorias > 0L) {
+                                (gasto.totalGasto.toFloat() / totalCategorias.toFloat() * 360f)
+                            } else { 0f }
+
                             if (sweep > 0f) {
                                 val gap = if (sweep > 4f) 4f else 0f
                                 drawArc(
-                                    color = gasto.corHex.toComposeColor(),
+                                    color = corCategoria,
                                     startAngle = startAngle + (gap / 2f),
                                     sweepAngle = (sweep * mainDonutProgress) - gap,
                                     useCenter = false,
                                     style = Stroke(width = thickness, cap = StrokeCap.Butt)
                                 )
-                                startAngle += sweep  // ✅ MOVIDO PARA DENTRO DO IF - ESTAVA FORA!
                             }
+                            startAngle += sweep
                         }
                     }
 
@@ -629,7 +654,6 @@ fun EstruturaGastosCard(
                                 style = Stroke(width = stroke, cap = StrokeCap.Round)
                             )
 
-                            // ✅ CORRIGIDO: Percentual baseado em FATURAS / SALDO
                             val percentualUsado = if (saldoDisponivel > 0L)
                                 (totalDividas.toFloat() / saldoDisponivel.toFloat() * 100f).toInt().coerceIn(0, 100)
                             else 0
@@ -644,7 +668,6 @@ fun EstruturaGastosCard(
                             )
                         }
                         Column(horizontalAlignment = Alignment.Start, modifier = Modifier.padding(start = 12.dp)) {
-                            // ✅ CORRIGIDO: Mostra percentual de FATURAS / SALDO
                             val percentualUsado = if (saldoDisponivel > 0L)
                                 (totalDividas.toFloat() / saldoDisponivel.toFloat() * 100f).toInt().coerceIn(0, 100)
                             else 0
@@ -656,7 +679,6 @@ fun EstruturaGastosCard(
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    // ✅ CORRIGIDO: ORÇAMENTO = SALDO DISPONÍVEL
                     val restante = (saldoDisponivel - totalDividas).coerceAtLeast(0L)
 
                     Column(horizontalAlignment = Alignment.Start, modifier = Modifier.padding(start = 12.dp)) {
@@ -679,6 +701,10 @@ fun EstruturaGastosCard(
                 gastosPorCategoria.forEachIndexed { idx, gasto ->
                     val fraction = if (totalForBars > 0f) gasto.totalGasto.toFloat() / totalForBars else 0f
 
+                    // MESMA COR CALCULADA POR HUE PARA A BARRA E ÍCONE
+                    val hue = ((gasto.categoriaId * 137.5f) % 360f).coerceIn(0f, 360f)
+                    val corCategoria = Color.hsl(hue = hue, saturation = 0.65f, lightness = 0.50f)
+
                     val animatedFraction by animateFloatAsState(
                         targetValue = if (animate) fraction else 0f,
                         animationSpec = tween(durationMillis = 700 + idx * 80)
@@ -687,7 +713,7 @@ fun EstruturaGastosCard(
                     val displayPercent = adjustedPercents.getOrNull(idx) ?: 0
 
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        IconeCategoriaSimples(iconeChave = gasto.iconeChave, corHex = gasto.corHex)
+                        IconeCategoriaDinamico(iconeChave = gasto.iconeChave, cor = corCategoria)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -710,7 +736,7 @@ fun EstruturaGastosCard(
                                     .fillMaxWidth(animatedFraction)
                                     .height(8.dp)
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(gasto.corHex.toComposeColor())
+                                    .background(corCategoria)
                                 )
                             }
                         }
@@ -721,22 +747,16 @@ fun EstruturaGastosCard(
         }
     }
 }
-// NOVO: Função para desenhar o ícone sem o quadrado de fundo, idêntico à Imagem 2
+
 @Composable
-private fun IconeCategoriaSimples(
+private fun IconeCategoriaDinamico(
     iconeChave: String?,
-    corHex: String
+    cor: Color
 ) {
     val chave = iconeChave ?: ""
     val context = LocalContext.current
     val resId = remember(chave) {
         if (chave.isBlank()) 0 else context.resources.getIdentifier(chave, "drawable", context.packageName)
-    }
-
-    val cor = try {
-        Color(android.graphics.Color.parseColor(corHex))
-    } catch (_: Exception) {
-        CorCategoriaFallback
     }
 
     if (resId != 0) {

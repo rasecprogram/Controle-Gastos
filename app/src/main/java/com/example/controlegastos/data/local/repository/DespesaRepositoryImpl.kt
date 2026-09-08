@@ -24,6 +24,14 @@ import java.time.YearMonth
 import java.time.ZoneOffset
 import javax.inject.Inject
 
+
+private fun String?.formatarCorHexSegura(): String {
+    if (this.isNullOrBlank()) return "#5F8D84" // Verde fallback se for nulo/vazio
+    val corLimpa = this.trim()
+    return if (corLimpa.startsWith("#")) corLimpa else "#$corLimpa"
+}
+
+
 class DespesaRepositoryImpl @Inject constructor(
     private val database: ControleGastosDatabase
 ) : DespesaRepository {
@@ -151,6 +159,16 @@ class DespesaRepositoryImpl @Inject constructor(
             }
     }
 
+    // ✅ CORRIGIDO: Simples implementação
+    override fun observarTotalReceitasDoMes(
+        mes: Int,
+        ano: Int
+    ): Flow<Long> {
+        return despesaDao.observarTotalReceitasDoMes(
+            mes = mes,
+            ano = ano
+        )
+    }
     override fun observarGastosAgrupadosPorMes(): Flow<List<ProjecaoMensal>> {
         return despesaDao
             .getGastosAgrupadosPorMes()
@@ -181,7 +199,8 @@ class DespesaRepositoryImpl @Inject constructor(
                     GastoPorCategoria(
                         categoriaId = categoria.categoriaId,
                         nomeCategoria = categoria.categoriaNome,
-                        corHex = categoria.categoriaCorHex,
+                        // 👇 ALTERAÇÃO AQUI: Formatar a cor de forma segura
+                        corHex = categoria.categoriaCorHex.formatarCorHexSegura(),
                         tetoMensal = categoria.tetoMensal,
                         totalGasto = categoria.totalCentavos,
                         percentualDoTotal = if (totalGeral > 0L) {
@@ -192,12 +211,11 @@ class DespesaRepositoryImpl @Inject constructor(
                         } else {
                             0f
                         },
-                        iconeChave = categoria.categoriaIconeChave // novo
+                        iconeChave = categoria.categoriaIconeChave
                     )
                 }
             }
     }
-
     override fun observarPendenciasDetalhadas(
         dataInicioEpoch: Long,
         dataFimEpoch: Long
@@ -509,8 +527,8 @@ class DespesaRepositoryImpl @Inject constructor(
             statusPago = despesa.statusPago,
             categoriaId = categoria.id,
             categoriaNome = categoria.nome,
-            categoriaCorHex = categoria.corHex,
-            categoriaIconeChave = categoria.iconeChave, // <-- NOVO: propaga o icone salvo na categoria
+            categoriaCorHex = categoria.corHex.formatarCorHexSegura(),
+            categoriaIconeChave = categoria.iconeChave,
             cartaoId = despesa.cartaoId,
             contaSaldoId = despesa.contaSaldoId,
             tipoLancamento = runCatching {

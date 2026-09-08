@@ -33,7 +33,8 @@ val categoriasSugeridas = listOf(
     CategoriaSugerida("Presentes", "presentes", "#D81B60"),
     CategoriaSugerida("Viagem", "viagem", "#00ACC1"),
     CategoriaSugerida("Contas da casa", "contas", "#7CB342"),
-    CategoriaSugerida("Outros", "outros", "#5F8D84")
+    CategoriaSugerida("Outros", "outros", "#5F8D84"),
+    CategoriaSugerida("Carro", "carro", "#5F8D88")
 )
 
 val instituicoesPredefinidas = listOf(

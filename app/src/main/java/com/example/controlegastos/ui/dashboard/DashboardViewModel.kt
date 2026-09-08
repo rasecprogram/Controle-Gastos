@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 import java.time.YearMonth
 import javax.inject.Inject
 
@@ -33,7 +32,6 @@ class DashboardViewModel @Inject constructor(
     private val contaSaldoRepository: ContaSaldoRepository
 ) : AndroidViewModel(application) {
 
-    // SharedPreferences compartilhado para ler o nome do usuário salvo nas configurações
     private val preferences = application.getSharedPreferences(
         "backup_preferences",
         Context.MODE_PRIVATE
@@ -42,12 +40,10 @@ class DashboardViewModel @Inject constructor(
     private val mesSelecionado = MutableStateFlow(YearMonth.now())
     private val numerosVisiveis = MutableStateFlow(true)
 
-    // Estado reativo para o nome do usuário
     private val nomeUsuarioFlow = MutableStateFlow(
         preferences.getString("chave_nome_usuario", "Você") ?: "Você"
     )
 
-    // fluxos auxiliares
     private val cartoesAtivosFlow = cartaoRepository.observarAtivos()
 
     private val saldoPositivoFlow = contaSaldoRepository
@@ -58,7 +54,14 @@ class DashboardViewModel @Inject constructor(
         .observarFaturasAbertasPorMes()
         .map { faturas -> faturas.sumOf { it.totalCentavos } }
 
-    private val receitasFlow = MutableStateFlow(0L)
+    // ✅ CORRIGIDO: Usa o novo método que retorna Flow<Long> diretamente
+    private val receitasFlow = mesSelecionado.flatMapLatest { mesAno ->
+        despesaRepository
+            .observarTotalReceitasDoMes(mes = mesAno.monthValue, ano = mesAno.year)
+            .catch {
+                emit(0L)
+            }
+    }
 
     val uiState: StateFlow<DashboardUiState> = combine(
         mesSelecionado,
@@ -79,7 +82,7 @@ class DashboardViewModel @Inject constructor(
                     cartoesAtivosFlow,
                     saldoPositivoFlow,
                     faturasAbertasFlow,
-                    receitasFlow
+                    receitasFlow  // ✅ Agora fornece o Long correto
                 ) { cartoes, saldoPositivo, totalFaturas, totalReceitas ->
                     DashboardUiState(
                         mesSelecionado = mesAno,
@@ -89,9 +92,9 @@ class DashboardViewModel @Inject constructor(
                         cartoes = cartoes,
                         saldoPositivo = saldoPositivo,
                         totalFaturas = totalFaturas,
-                        totalReceitas = totalReceitas,
+                        totalReceitas = totalReceitas,  // ✅ Agora correto
                         numerosVisiveis = valoresVisiveis,
-                        nomeUsuario = nomeUsuario, // Passando o nome atualizado para o UiState
+                        nomeUsuario = nomeUsuario,
                         carregando = false
                     )
                 }.catch { e ->
