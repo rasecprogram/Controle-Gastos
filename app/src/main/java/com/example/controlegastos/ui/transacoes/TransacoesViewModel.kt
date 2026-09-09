@@ -185,12 +185,21 @@ class TransacoesViewModel @Inject constructor(
                     diasAntesVencimento = cartao.diasAntesVencimento,
                     diaVencimento = cartao.diaVencimento
                 )
+                val inicioCicloMillis = inicioCiclo
+                    .atStartOfDay(ZoneOffset.UTC)
+                    .toInstant()
+                    .toEpochMilli()
+
+                val fimExclusivoCicloMillis = fimExclusivoCiclo
+                    .atStartOfDay(ZoneOffset.UTC)
+                    .toInstant()
+                    .toEpochMilli()
 
                 val despesasDoCartao = dados.despesasFaturas
                     .filter { despesa ->
                         despesa.cartaoId == cartao.id &&
-                                despesa.dataCompra >= inicioCiclo &&
-                                despesa.dataCompra < fimExclusivoCiclo
+                                despesa.dataCompra >= inicioCicloMillis &&
+                                despesa.dataCompra < fimExclusivoCicloMillis
                     }
                     .sortedBy { despesa ->
                         despesa.dataCompra
