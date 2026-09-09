@@ -22,7 +22,7 @@ data class EdicaoUiState(
     val tipoContaSelecionado: TipoContaSaldo = TipoContaSaldo.CONTA,
     val saldoInicialTexto: String = "",
     val cartaoEmEdicao: Cartao? = null,
-    val diaFechamentoTexto: String = "29",
+    val diasAntesVencimentoTexto: String = "8",
     val diaVencimentoTexto: String = "5",
     val tipoSaldoSelecionado: TipoContaSaldo = TipoContaSaldo.CONTA,
 

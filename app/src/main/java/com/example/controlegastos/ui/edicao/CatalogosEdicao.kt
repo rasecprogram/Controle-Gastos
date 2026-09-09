@@ -13,7 +13,7 @@ data class InstituicaoPredefinida(
     val chave: String,
     val sigla: String,
     val cor: Color,
-    val diaFechamentoPadrao: Int,
+    val diasAntesVencimentoPadrao: Int,
     val diaVencimentoPadrao: Int
 )
 
@@ -38,7 +38,7 @@ val categoriasSugeridas = listOf(
 )
 
 val instituicoesPredefinidas = listOf(
-    InstituicaoPredefinida("Nubank", "nubank", "Nu", Color(0xFF820AD1), 29, 5),
+    InstituicaoPredefinida("Nubank", "nubank", "Nu", Color(0xFF820AD1), 8, 5),
     InstituicaoPredefinida("C6 Bank", "c6", "C6", Color(0xFF1E1E1E), 29, 5),
     InstituicaoPredefinida("Itaú", "itau", "IT", Color(0xFFEC7000), 29, 5),
     InstituicaoPredefinida("Bradesco", "bradesco", "B", Color(0xFFCC092F), 22, 5),

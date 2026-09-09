@@ -30,17 +30,17 @@ interface CartaoDao {
 
     @Query(
         """
-        UPDATE tb_cartoes
-        SET ativo = :ativo,
-            dia_fechamento = :diaFechamento,
-            dia_vencimento = :diaVencimento
-        WHERE id = :cartaoId
-        """
+    UPDATE tb_cartoes
+    SET ativo = :ativo,
+        dias_antes_vencimento = :diasAntesVencimento,
+        dia_vencimento = :diaVencimento
+    WHERE id = :cartaoId
+    """
     )
     suspend fun atualizarConfiguracao(
         cartaoId: Int,
         ativo: Boolean,
-        diaFechamento: Int,
+        diasAntesVencimento: Int,
         diaVencimento: Int
     ): Int
 

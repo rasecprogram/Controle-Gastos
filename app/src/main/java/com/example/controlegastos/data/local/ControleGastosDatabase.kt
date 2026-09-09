@@ -25,7 +25,7 @@ import com.example.controlegastos.data.local.entity.GrupoParcelamentoEntity
         CartaoEntity::class,
         ContaSaldoEntity::class
     ],
-    version = 6, // 1. ALTERADO DE 5 PARA 6
+    version = 7, // 1. ALTERADO DE 5 PARA 6
     exportSchema = true
 )
 @TypeConverters(DatabaseConverters::class)
@@ -147,6 +147,17 @@ abstract class ControleGastosDatabase : RoomDatabase() {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     "ALTER TABLE tb_cartoes ADD COLUMN limite_centavos INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+            ALTER TABLE tb_cartoes
+            ADD COLUMN dias_antes_vencimento INTEGER NOT NULL DEFAULT 8
+            """.trimIndent()
                 )
             }
         }

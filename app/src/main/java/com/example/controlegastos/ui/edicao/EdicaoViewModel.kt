@@ -169,7 +169,7 @@ class EdicaoViewModel @Inject constructor(
                             marcaChave = instituicao.chave,
                             corHex = instituicao.cor.toHex(),
                             ativo = ativo,
-                            diaFechamento = instituicao.diaFechamentoPadrao,
+                            diasAntesVencimento = instituicao.diasAntesVencimentoPadrao,
                             diaVencimento = instituicao.diaVencimentoPadrao,
                             limiteCentavos = 0L // Valor padrão caso adicione via ativação rápida
                         )
@@ -192,7 +192,7 @@ class EdicaoViewModel @Inject constructor(
     fun adicionarCartao(
         instituicaoChave: String,
         nome: String,
-        diaFechamento: Int,
+        diasAntesVencimento: Int,
         diaVencimento: Int,
         limiteCentavos: Long
     ) {
@@ -207,12 +207,12 @@ class EdicaoViewModel @Inject constructor(
             return
         }
 
-        // Caso especial: Pix — não possui ciclo de fechamento/vencimento nem limite
+        // Caso especial: Pix — não possui ciclo de vencimento nem limite
         val isPix = instituicao.chave.equals("pix", ignoreCase = true)
         if (!isPix) {
-            if (diaFechamento !in 1..31 || diaVencimento !in 1..31) {
+            if (diasAntesVencimento !in 1..31 || diaVencimento !in 1..31) {
                 formulario.value = formulario.value.copy(
-                    mensagem = "Informe fechamento e vencimento entre 1 e 31."
+                    mensagem = "Informe antecedência e vencimento entre 1 e 31."
                 )
                 return
             }
@@ -233,7 +233,7 @@ class EdicaoViewModel @Inject constructor(
                         marcaChave = instituicao.chave,
                         corHex = instituicao.cor.toHex(),
                         ativo = true,
-                        diaFechamento = if (isPix) 1 else diaFechamento,
+                        diasAntesVencimento = if (isPix) 8 else diasAntesVencimento,
                         diaVencimento = if (isPix) 1 else diaVencimento,
                         limiteCentavos = if (isPix) 0L else limiteCentavos
                     )
@@ -250,6 +250,7 @@ class EdicaoViewModel @Inject constructor(
             }
         }
     }
+
     fun atualizarAtivacaoCartaoPorId(cartaoId: Int, ativo: Boolean) {
         viewModelScope.launch {
             runCatching {
@@ -286,15 +287,23 @@ class EdicaoViewModel @Inject constructor(
     fun editarConfiguracaoCartao(cartao: Cartao) {
         formulario.value = formulario.value.copy(
             cartaoEmEdicao = cartao,
-            diaFechamentoTexto = cartao.diaFechamento.toString(),
+            diasAntesVencimentoTexto = cartao.diasAntesVencimento.toString(),
             diaVencimentoTexto = cartao.diaVencimento.toString(),
             mensagem = null
         )
     }
 
-    fun atualizarDiasCartao(fechamento: String, vencimento: String) {
+    fun atualizarDiasAntesVencimento(texto: String) {
+        val apenasNumeros = texto.filter { it.isDigit() }
         formulario.value = formulario.value.copy(
-            diaFechamentoTexto = fechamento.filter(Char::isDigit),
+            diasAntesVencimentoTexto = apenasNumeros,
+            mensagem = null
+        )
+    }
+
+    fun atualizarDiasCartao(diasAntesVencimento: String, vencimento: String) {
+        formulario.value = formulario.value.copy(
+            diasAntesVencimentoTexto = diasAntesVencimento.filter(Char::isDigit),
             diaVencimentoTexto = vencimento.filter(Char::isDigit),
             mensagem = null
         )
@@ -304,45 +313,39 @@ class EdicaoViewModel @Inject constructor(
         val estado = formulario.value
         val cartao = estado.cartaoEmEdicao ?: return
 
-        // Se for Pix, não permitimos salvar configuração de fechamento/vencimento/limite:
+        // Se for Pix, não permitimos salvar configuração de ciclo/limite
         if (cartao.marcaChave.equals("pix", ignoreCase = true)) {
-            // apenas fecha o editor sem tentar atualizar a configuração no banco
             formulario.value = estado.copy(
                 cartaoEmEdicao = null,
-                diaFechamentoTexto = "",
+                diasAntesVencimentoTexto = "",
                 diaVencimentoTexto = "",
                 mensagem = "Configuração do Pix não aplicável."
             )
             return
         }
 
-        val fechamento = estado.diaFechamentoTexto.toIntOrNull()
-        val vencimento = estado.diaVencimentoTexto.toIntOrNull()
+        val diasAntesVencimento = estado.diasAntesVencimentoTexto
+            .toIntOrNull()
+            ?.coerceIn(1, 31)
+            ?: 8
 
-        if (
-            fechamento == null ||
-            vencimento == null ||
-            fechamento !in 1..31 ||
-            vencimento !in 1..31
-        ) {
-            formulario.value = estado.copy(
-                mensagem = "Informe fechamento e vencimento entre 1 e 31."
-            )
-            return
-        }
+        val diaVencimento = estado.diaVencimentoTexto
+            .toIntOrNull()
+            ?.coerceIn(1, 31)
+            ?: 5
 
         viewModelScope.launch {
             runCatching {
                 cartaoRepository.atualizarConfiguracao(
                     cartaoId = cartao.id,
                     ativo = cartao.ativo,
-                    diaFechamento = fechamento,
-                    diaVencimento = vencimento
+                    diasAntesVencimento = diasAntesVencimento,
+                    diaVencimento = diaVencimento
                 )
             }.onSuccess {
                 formulario.value = formulario.value.copy(
                     cartaoEmEdicao = null,
-                    diaFechamentoTexto = "",
+                    diasAntesVencimentoTexto = "",
                     diaVencimentoTexto = "",
                     mensagem = "Configuração do cartão salva."
                 )

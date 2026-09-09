@@ -22,6 +22,8 @@ import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.ZoneOffset
 import javax.inject.Inject
+import com.example.controlegastos.domain.util.calcularFimExclusivoCicloFatura
+import com.example.controlegastos.domain.util.calcularInicioCicloFatura
 
 @HiltViewModel
 class TransacoesViewModel @Inject constructor(
@@ -172,14 +174,16 @@ class TransacoesViewModel @Inject constructor(
             }
             .map { cartao ->
 
-                val inicioCiclo = inicioCicloFatura(
+                val inicioCiclo = calcularInicioCicloFatura(
                     mesFatura = filtros.mes,
-                    diaFechamento = cartao.diaFechamento
+                    diasAntesVencimento = cartao.diasAntesVencimento,
+                    diaVencimento = cartao.diaVencimento
                 )
 
-                val fimExclusivoCiclo = fimExclusivoCicloFatura(
+                val fimExclusivoCiclo = calcularFimExclusivoCicloFatura(
                     mesFatura = filtros.mes,
-                    diaFechamento = cartao.diaFechamento
+                    diasAntesVencimento = cartao.diasAntesVencimento,
+                    diaVencimento = cartao.diaVencimento
                 )
 
                 val despesasDoCartao = dados.despesasFaturas

@@ -23,6 +23,9 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneOffset
 import javax.inject.Inject
+import com.example.controlegastos.domain.util.calcularFimExclusivoCicloFatura
+import com.example.controlegastos.domain.util.calcularInicioCicloFatura
+
 
 
 private fun String?.formatarCorHexSegura(): String {
@@ -338,18 +341,19 @@ class DespesaRepositoryImpl @Inject constructor(
                 .firstOrNull { it.id == cartaoId }
                 ?: return@withTransaction false
 
-            val inicio = calcularInicioCiclo(
-                ano = ano,
-                mes = mes,
-                diaFechamento = cartao.diaFechamento
+            val mesFatura = YearMonth.of(ano, mes)
+
+            val inicio = calcularInicioCicloFatura(
+                mesFatura = mesFatura,
+                diasAntesVencimento = cartao.diasAntesVencimento,
+                diaVencimento = cartao.diaVencimento
             )
 
-            val fim = calcularFimExclusivoCiclo(
-                ano = ano,
-                mes = mes,
-                diaFechamento = cartao.diaFechamento
+            val fim = calcularFimExclusivoCicloFatura(
+                mesFatura = mesFatura,
+                diasAntesVencimento = cartao.diasAntesVencimento,
+                diaVencimento = cartao.diaVencimento
             )
-
             val totalFatura = despesaDao.totalFaturaAberta(
                 cartaoId = cartaoId,
                 inicio = inicio,

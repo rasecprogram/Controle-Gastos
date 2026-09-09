@@ -62,7 +62,7 @@ data class CartaoBackupDTO(
     val marcaChave: String,
     val corHex: String,
     val ativo: Boolean,
-    val diaFechamento: Int = 29,
+    val diasAntesVencimento: Int = 8,
     val diaVencimento: Int = 5
 )
 
@@ -150,7 +150,7 @@ fun CartaoEntity.toBackupDTO() = CartaoBackupDTO(
     marcaChave = marcaChave,
     corHex = corHex,
     ativo = ativo,
-    diaFechamento = diaFechamento,
+    diasAntesVencimento = diasAntesVencimento,
     diaVencimento = diaVencimento
 )
 
@@ -160,7 +160,7 @@ fun CartaoBackupDTO.toEntity() = CartaoEntity(
     marcaChave = marcaChave,
     corHex = corHex,
     ativo = ativo,
-    diaFechamento = diaFechamento,
+    diasAntesVencimento = diasAntesVencimento,
     diaVencimento = diaVencimento
 )
 

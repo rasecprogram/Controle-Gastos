@@ -20,7 +20,7 @@ interface CartaoRepository {
     suspend fun atualizarConfiguracao(
         cartaoId: Int,
         ativo: Boolean,
-        diaFechamento: Int,
+        diasAntesVencimento: Int,
         diaVencimento: Int
     ): Boolean
 }

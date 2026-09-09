@@ -45,13 +45,13 @@ class CartaoRepositoryImpl @Inject constructor(
     override suspend fun atualizarConfiguracao(
         cartaoId: Int,
         ativo: Boolean,
-        diaFechamento: Int,
+        diasAntesVencimento: Int,
         diaVencimento: Int
     ): Boolean {
         return cartaoDao.atualizarConfiguracao(
             cartaoId = cartaoId,
             ativo = ativo,
-            diaFechamento = diaFechamento,
+            diasAntesVencimento = diasAntesVencimento,
             diaVencimento = diaVencimento
         ) > 0
     }
@@ -62,7 +62,7 @@ class CartaoRepositoryImpl @Inject constructor(
         marcaChave = marcaChave,
         corHex = corHex,
         ativo = ativo,
-        diaFechamento = diaFechamento,
+        diasAntesVencimento = diasAntesVencimento,
         diaVencimento = diaVencimento,
         limiteCentavos = limiteCentavos // Campo adicionado
     )
@@ -73,7 +73,7 @@ class CartaoRepositoryImpl @Inject constructor(
         marcaChave = marcaChave,
         corHex = corHex,
         ativo = ativo,
-        diaFechamento = diaFechamento,
+        diasAntesVencimento = diasAntesVencimento,
         diaVencimento = diaVencimento,
         limiteCentavos = limiteCentavos // Campo adicionado
     )

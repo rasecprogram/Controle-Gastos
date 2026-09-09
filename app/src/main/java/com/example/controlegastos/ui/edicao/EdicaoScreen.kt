@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,6 +46,7 @@ import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Favorite
@@ -72,8 +74,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -107,6 +109,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -115,16 +120,14 @@ import com.example.controlegastos.R
 import com.example.controlegastos.domain.model.Categoria
 import com.example.controlegastos.domain.model.ContaSaldo
 import com.example.controlegastos.domain.model.TipoContaSaldo
+import com.example.controlegastos.domain.util.calcularDataFechamento
+import com.example.controlegastos.domain.util.criarDataVencimento
 import com.example.controlegastos.ui.components.BarraNavegacaoInferior
 import java.text.NumberFormat
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import java.util.Locale
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.ui.text.style.TextAlign
-
 
 // ====== CORES / CONSTANTES DE ESTILO ======
 private val CorEdicao = Color(0xFF2F6F62)
@@ -133,8 +136,6 @@ private val CorFundo = Color(0xFFF4F7F3)
 private val CorCardClaro = Color(0xFFFFFFFF)
 private val CorCardStat = Color(0xFFF0F4EF)
 private val CorPillBg = Color(0xFF1B5B3A)
-private val CorTetoChipBg = Color(0xFF153B33)
-private val CorPillHeight = 44.dp
 private val CorBordaCampo = Color(0xFF9AA9A2)
 private val CorTextoPlaceholder = Color(0xFF9AA9A2)
 private val CorChipTexto = Color(0xFF66736E)
@@ -155,7 +156,6 @@ fun EdicaoScreen(
  var secaoSelecionada by remember { mutableIntStateOf(0) }
  var mostrarFormularioSaldo by remember { mutableStateOf(false) }
 
- // Edição está na posição 3 da barra de navegação inferior
  var selectedIndex by remember { mutableStateOf(3) }
 
  LaunchedEffect(uiState.mensagem) {
@@ -165,7 +165,6 @@ fun EdicaoScreen(
   }
  }
 
- // Envolvemos a tela em um Box para permitir a fixação da barra inferior flutuante
  Box(modifier = Modifier.fillMaxSize().background(CorFundo)) {
   Scaffold(
    modifier = Modifier.fillMaxSize(),
@@ -207,8 +206,6 @@ fun EdicaoScreen(
       .padding(innerPadding)
       .imePadding()
       .background(CorFundo),
-
-     // Adicionado padding inferior de 110.dp para o conteúdo não ficar por baixo da barra
      contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 110.dp),
      verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -222,10 +219,7 @@ fun EdicaoScreen(
          onTetoAlterado = viewModel::atualizarTetoCategoria,
          onSalvar = viewModel::salvarCategoria,
          onAlternarAtivacao = { categoria, ativa ->
-          viewModel.alterarAtivacaoCategoria(
-           categoria,
-           ativa
-          )
+          viewModel.alterarAtivacaoCategoria(categoria, ativa)
          },
          onRemoverCategoria = { categoria ->
           viewModel.excluirCategoria(categoria.id)
@@ -286,11 +280,11 @@ fun EdicaoScreen(
           onAtivacaoAlterada = { novo ->
            alterarAtivacaoPorCartao(cartao, novo)
           },
-          onSalvarDatas = { fechamento, vencimento ->
+          onSalvarDatas = { diasAntes, vencimento ->
            viewModel.editarConfiguracaoCartao(cartao)
 
            viewModel.atualizarDiasCartao(
-            fechamento.toString(),
+            diasAntes.toString(),
             vencimento.toString()
            )
 
@@ -311,16 +305,11 @@ fun EdicaoScreen(
            }
          },
          onExcluirCartao = viewModel::excluirCartao,
-         onAdicionarCartao = {
-           instituicao,
-           fechamento,
-           vencimento,
-           limiteCentavos ->
-
+         onAdicionarCartao = { instituicao, diasAntes, vencimento, limiteCentavos ->
           viewModel.adicionarCartao(
            instituicaoChave = instituicao.chave,
            nome = instituicao.nome,
-           diaFechamento = fechamento,
+           diasAntesVencimento = diasAntes,
            diaVencimento = vencimento,
            limiteCentavos = limiteCentavos
           )
@@ -453,12 +442,9 @@ fun EdicaoScreen(
 
           FormularioContaSaldo(
            uiState = uiState,
-           onInstituicaoSelecionada =
-            viewModel::selecionarInstituicao,
-           onTipoSelecionado =
-            viewModel::selecionarTipoConta,
-           onSaldoAlterado =
-            viewModel::atualizarSaldoInicial,
+           onInstituicaoSelecionada = viewModel::selecionarInstituicao,
+           onTipoSelecionado = viewModel::selecionarTipoConta,
+           onSaldoAlterado = viewModel::atualizarSaldoInicial,
            onSalvar = {
             viewModel.salvarContaSaldo()
             mostrarFormularioSaldo = false
@@ -473,7 +459,6 @@ fun EdicaoScreen(
    }
   }
 
-  // Barra de navegação inferior fixada no rodapé da EdicaoScreen
   BarraNavegacaoInferior(
    modifier = Modifier.align(Alignment.BottomCenter),
    selectedIndex = selectedIndex,
@@ -615,8 +600,8 @@ fun InativasSectionCartoes(
   if (mostrarNovoCartao) {
    Spacer(Modifier.height(12.dp))
    NovoCartaoForm(
-    onSave = { instituicao, fechamento, vencimento, limiteCentavos ->
-     onAdicionarCartao(instituicao, fechamento, vencimento, limiteCentavos)
+    onSave = { instituicao, diasAntes, vencimento, limiteCentavos ->
+     onAdicionarCartao(instituicao, diasAntes, vencimento, limiteCentavos)
      mostrarNovoCartao = false
     }
    )
@@ -635,19 +620,6 @@ fun InativasSectionCartoes(
  }
 }
 
-private fun parseCurrencyToCentavos(input: String): Long {
- val digits = input.filter { it.isDigit() }
- if (digits.isBlank()) return 0L
- return if (digits.length <= 2) {
-  digits.toLong()
- } else {
-  val reais = digits.dropLast(2).toLong()
-  val cents = digits.takeLast(2).toLong()
-  reais * 100 + cents
- }
-}
-
-
 private fun formatarTextoMoeda(input: String): String {
  val apenasDigitos = input.filter { it.isDigit() }
  if (apenasDigitos.isBlank()) return ""
@@ -656,11 +628,11 @@ private fun formatarTextoMoeda(input: String): String {
  val reais = valorLong / 100
  val centavos = valorLong % 100
 
- // Formata os reais com separador de milhar (ponto)
- val reaisFormatados = java.text.NumberFormat.getIntegerInstance(Locale("pt", "BR")).format(reais)
+ val reaisFormatados = NumberFormat.getIntegerInstance(Locale("pt", "BR")).format(reais)
 
  return "%s,%02d".format(reaisFormatados, centavos)
 }
+
 @Composable
 private fun NovoCartaoForm(
  onSave: (InstituicaoPredefinida, Int, Int, Long) -> Unit
@@ -670,14 +642,10 @@ private fun NovoCartaoForm(
    instituicoesPredefinidas.firstOrNull()
   )
  }
- var fechamentoText by remember { mutableStateOf("") }
+ var diasAntesText by remember { mutableStateOf("") }
  var vencimentoText by remember { mutableStateOf("") }
 
- // Estado interno que representa apenas os dígitos (centavos inclusos).
  var limiteDigits by remember { mutableStateOf("") }
-
- // Texto formatado exibido no campo (ex: "1.234,56")
- val limiteText = remember(limiteDigits) { formatarTextoMoeda(limiteDigits) }
 
  val isPixSelected = selecionada?.chave?.equals("pix", ignoreCase = true) == true
 
@@ -704,7 +672,7 @@ private fun NovoCartaoForm(
     )
    }
 
-   androidx.compose.material3.HorizontalDivider(
+   HorizontalDivider(
     color = CorCardStat.copy(alpha = 0.6f)
    )
 
@@ -728,8 +696,7 @@ private fun NovoCartaoForm(
 
      val logoRes = remember(instituicao.chave) {
       val nomeArquivo =
-       if (instituicao.sigla == "CX" || instituicao.chave.contains("caixa", ignoreCase = true)
-       ) {
+       if (instituicao.sigla == "CX" || instituicao.chave.contains("caixa", ignoreCase = true)) {
         "cef"
        } else {
         instituicao.chave
@@ -766,12 +733,10 @@ private fun NovoCartaoForm(
        )
        .clickable {
         selecionada = instituicao
-        // Quando troca para Pix, limpa campos opcionais para evitar confusão
         if (instituicao.chave.equals("pix", ignoreCase = true)) {
-         fechamentoText = ""
+         diasAntesText = ""
          vencimentoText = ""
          limiteDigits = ""
-
         }
        },
       contentAlignment = Alignment.Center
@@ -805,17 +770,16 @@ private fun NovoCartaoForm(
 
    Spacer(Modifier.height(12.dp))
 
-   // Se NÃO for Pix, mostra campos de fechamento/vencimento e limite
    if (!isPixSelected) {
     Row(
      horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
      CampoCartaoCinza(
-      titulo = "Fecha no dia",
-      valor = fechamentoText,
-      placeholder = "Ex: 19",
+      titulo = "Fecha quantos dias antes",
+      valor = diasAntesText,
+      placeholder = "Ex: 8",
       onValueChange = {
-       fechamentoText = it.filter(Char::isDigit)
+       diasAntesText = it.filter(Char::isDigit)
       },
       modifier = Modifier.weight(1f)
      )
@@ -823,7 +787,7 @@ private fun NovoCartaoForm(
      CampoCartaoCinza(
       titulo = "Vence no dia",
       valor = vencimentoText,
-      placeholder = "Ex: 26",
+      placeholder = "Ex: 5",
       onValueChange = {
        vencimentoText = it.filter(Char::isDigit)
       },
@@ -844,7 +808,6 @@ private fun NovoCartaoForm(
 
     Spacer(Modifier.height(12.dp))
    } else {
-    // Caso Pix selecionado: pequena explicação (opcional)
     Spacer(modifier = Modifier.height(8.dp))
     Text(
      text = "Pix não possui ciclo de fechamento nem limite.",
@@ -856,27 +819,24 @@ private fun NovoCartaoForm(
 
    Button(
     onClick = {
-     val fechamento: Int
+     val diasAntes: Int
      val vencimento: Int
      val limiteCentavos: Long
 
      if (isPixSelected) {
-      // valores padrão para Pix (neutros)
-      fechamento = 1
+      diasAntes = 8
       vencimento = 1
       limiteCentavos = 0L
      } else {
-      fechamento = fechamentoText.toIntOrNull() ?: 1
-      vencimento = vencimentoText.toIntOrNull() ?: 1
-
-      // Converte a string de dígitos (centavos) para Long
+      diasAntes = diasAntesText.toIntOrNull() ?: 8
+      vencimento = vencimentoText.toIntOrNull() ?: 5
       limiteCentavos = limiteDigits.toLongOrNull() ?: 0L
      }
 
      selecionada?.let { instituicao ->
       onSave(
        instituicao,
-       fechamento,
+       diasAntes,
        vencimento,
        limiteCentavos
       )
@@ -960,13 +920,12 @@ private fun CampoCartaoCinza(
 @Composable
 private fun LimiteCartaoField(
  titulo: String,
- digits: String, // somente dígitos (centavos)
+ digits: String,
  onDigitsChange: (String) -> Unit,
  modifier: Modifier = Modifier,
  placeholder: String = "0,00",
  prefixo: String? = null
 ) {
- // Estado interno do TextFieldValue para controlar seleção/composição
  var textFieldValue by remember {
   mutableStateOf(
    TextFieldValue(
@@ -976,7 +935,6 @@ private fun LimiteCartaoField(
   )
  }
 
- // Quando digits externo mudar (por exemplo ao limpar), atualiza o TextFieldValue exibido
  LaunchedEffect(digits) {
   val formatted = if (digits.isEmpty()) "" else formatarTextoMoeda(digits)
   textFieldValue = TextFieldValue(formatted, TextRange(formatted.length))
@@ -993,36 +951,28 @@ private fun LimiteCartaoField(
   androidx.compose.foundation.text.BasicTextField(
    value = textFieldValue,
    onValueChange = { newTfv ->
-    // extrai apenas dígitos do texto recebido do IME
     val newDigits = newTfv.text.filter { it.isDigit() }
 
-    // Se não mudou, apenas atualiza seleção/valor formatado e retorna
     if (newDigits == digits) {
      val formatted = if (newDigits.isEmpty()) "" else formatarTextoMoeda(newDigits)
      textFieldValue = TextFieldValue(formatted, TextRange(formatted.length))
      return@BasicTextField
     }
 
-    // Detecta se foi adição (colagem/entrada append) ou remoção
     val updatedDigits = when {
      newDigits.startsWith(digits) -> {
-      // adição no final: append apenas o sufixo
       digits + newDigits.substring(digits.length)
      }
      digits.startsWith(newDigits) -> {
-      // remoção (backspace): adota newDigits
       newDigits
      }
      else -> {
-      // edição no meio ou colagem: adota newDigits por segurança
       newDigits
      }
     }
 
-    // Atualiza estado externo
     onDigitsChange(updatedDigits)
 
-    // Atualiza o TextFieldValue com o texto formatado e posiciona cursor no fim
     val formatted = if (updatedDigits.isEmpty()) "" else formatarTextoMoeda(updatedDigits)
     textFieldValue = TextFieldValue(formatted, TextRange(formatted.length))
    },
@@ -1069,6 +1019,7 @@ private fun LimiteCartaoField(
   )
  }
 }
+
 @Composable
 fun TopBarEdicao(
  onVoltar: () -> Unit,
@@ -1131,23 +1082,6 @@ fun TopBarEdicao(
   Spacer(modifier = Modifier.height(12.dp))
 
   bottomContent()
- }
-}
-
-@Composable
-private fun CabecalhoSecao(titulo: String, descricao: String) {
- Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-  Text(
-   titulo,
-   color = CorTextoEdicao,
-   style = MaterialTheme.typography.titleLarge,
-   fontWeight = FontWeight.Bold
-  )
-  Text(
-   descricao,
-   color = MaterialTheme.colorScheme.onSurfaceVariant,
-   style = MaterialTheme.typography.bodyMedium
-  )
  }
 }
 
@@ -1663,7 +1597,7 @@ private fun NovoCategoriaCard(
 
    Spacer(modifier = Modifier.height(8.dp))
 
-   androidx.compose.material3.HorizontalDivider(
+   HorizontalDivider(
     color = CorCardStat.copy(alpha = 0.6f)
    )
 
@@ -1971,10 +1905,6 @@ private fun CartaoDetalhado(
 ) {
  val corSubtitulo = CorTextoPlaceholder
  val corLabelCinza = CorTextoPlaceholder
- val progresso = remember(disponivelCentavos, usadoCentavos) {
-  val total = (usadoCentavos + disponivelCentavos).coerceAtLeast(1L)
-  (usadoCentavos.toDouble() / total.toDouble()).toFloat().coerceIn(0f, 1f)
- }
 
  val isPix = cartao.marcaChave.equals("pix", ignoreCase = true)
 
@@ -1985,7 +1915,6 @@ private fun CartaoDetalhado(
   elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
  ) {
   Column(modifier = Modifier.padding(14.dp)) {
-   // Cabeçalho: logo, nome e switch
    Row(verticalAlignment = Alignment.CenterVertically) {
     val context = LocalContext.current
     val logoRes = remember(cartao.marcaChave) {
@@ -2053,10 +1982,9 @@ private fun CartaoDetalhado(
 
      Spacer(Modifier.height(4.dp))
 
-     // Fecha / Vence: já escondido para Pix
      if (!isPix) {
       Text(
-       text = "Fecha dia ${cartao.diaFechamento} • Vence dia ${cartao.diaVencimento}",
+       text = "Fecha ${cartao.diasAntesVencimento} dias antes • Vence dia ${cartao.diaVencimento}",
        color = corSubtitulo,
        style = MaterialTheme.typography.bodySmall
       )
@@ -2081,7 +2009,6 @@ private fun CartaoDetalhado(
 
    Spacer(Modifier.height(12.dp))
 
-   // === Para cartões normais: mostra resumo DISPONÍVEL / USADO / barra / limite / divider / edição ===
    if (!isPix) {
     Text(
      text = "Limite ${limiteCentavos.formatarMoedaPtBr()}",
@@ -2095,7 +2022,6 @@ private fun CartaoDetalhado(
 
     Spacer(Modifier.height(6.dp))
 
-    // Editar ciclo de cobrança (já só aparece se não for Pix)
     var editarExpandido by remember { mutableStateOf(false) }
 
     Row(
@@ -2125,7 +2051,7 @@ private fun CartaoDetalhado(
     if (editarExpandido) {
      Spacer(Modifier.height(8.dp))
 
-     var fechamentoText by remember { mutableStateOf(cartao.diaFechamento.toString()) }
+     var fechamentoText by remember { mutableStateOf(cartao.diasAntesVencimento.toString()) }
      var vencimentoText by remember { mutableStateOf(cartao.diaVencimento.toString()) }
 
      Column(
@@ -2139,7 +2065,7 @@ private fun CartaoDetalhado(
       ) {
        Column(modifier = Modifier.weight(1f)) {
         Text(
-         text = "Fecha no dia",
+         text = "Fecha quantos dias antes",
          color = corLabelCinza,
          style = MaterialTheme.typography.labelMedium
         )
@@ -2154,7 +2080,7 @@ private fun CartaoDetalhado(
           color = CorTextoEdicao,
           fontWeight = FontWeight.Bold,
           fontSize = 16.sp,
-          textAlign = androidx.compose.ui.text.style.TextAlign.Center
+          textAlign = TextAlign.Center
          ),
          modifier = Modifier
           .fillMaxWidth()
@@ -2189,7 +2115,7 @@ private fun CartaoDetalhado(
           color = CorTextoEdicao,
           fontWeight = FontWeight.Bold,
           fontSize = 16.sp,
-          textAlign = androidx.compose.ui.text.style.TextAlign.Center
+          textAlign = TextAlign.Center
          ),
          modifier = Modifier
           .fillMaxWidth()
@@ -2208,12 +2134,53 @@ private fun CartaoDetalhado(
        }
       }
 
+      val diasAntesVencimentoCalc = fechamentoText
+       .toIntOrNull()
+       ?.coerceIn(1, 31)
+       ?: 8
+      val diaVencimentoCalc = vencimentoText
+       .toIntOrNull()
+       ?.coerceIn(1, 31)
+       ?: 5
+      val hoje = LocalDate.now()
+      val proximoVencimento = criarDataVencimento(
+       anoMes = YearMonth.from(hoje).let { anoMesAtual ->
+        val vencimentoNoMesAtual = criarDataVencimento(
+         anoMes = anoMesAtual,
+         diaVencimento = diaVencimentoCalc
+        )
+        if (vencimentoNoMesAtual.isAfter(hoje)) {
+         anoMesAtual
+        } else {
+         anoMesAtual.plusMonths(1)
+        }
+       },
+       diaVencimento = diaVencimentoCalc
+      )
+      val proximoFechamento = calcularDataFechamento(
+       dataVencimento = proximoVencimento,
+       diasAntesVencimento = diasAntesVencimentoCalc
+      )
+
+      Text(
+       text = "Próximo fechamento: ${
+        proximoFechamento.format(
+         DateTimeFormatter.ofPattern(
+          "dd 'de' MMMM",
+          Locale("pt", "BR")
+         )
+        )
+       }",
+       style = MaterialTheme.typography.bodySmall,
+       color = CorEdicao.copy(alpha = 0.75f),
+       modifier = Modifier.padding(top = 8.dp)
+      )
+
       Spacer(Modifier.height(16.dp))
 
       Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-       // Botão cancelar
        TextButton(onClick = {
-        fechamentoText = cartao.diaFechamento.toString()
+        fechamentoText = cartao.diasAntesVencimento.toString()
         vencimentoText = cartao.diaVencimento.toString()
         editarExpandido = false
        }) {
@@ -2222,18 +2189,16 @@ private fun CartaoDetalhado(
 
        Spacer(Modifier.width(8.dp))
 
-       // Botão salvar
        Button(
         onClick = {
-         val f = fechamentoText.toIntOrNull() ?: cartao.diaFechamento
+         val f = fechamentoText.toIntOrNull() ?: cartao.diasAntesVencimento
          val v = vencimentoText.toIntOrNull() ?: cartao.diaVencimento
          onSalvarDatas(f, v)
          editarExpandido = false
         },
-        modifier = Modifier
-         .height(42.dp),
+        modifier = Modifier.height(42.dp),
         shape = RoundedCornerShape(8.dp),
-        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+        colors = ButtonDefaults.buttonColors(
          containerColor = CorEdicao
         )
        ) {
@@ -2242,8 +2207,7 @@ private fun CartaoDetalhado(
       }
      }
     }
-   } // fim if !isPix
-   // === Para Pix, nada dessa área é renderizado ===
+   }
   }
  }
 }
@@ -2432,12 +2396,14 @@ private fun ConfirmacaoExcluirDialog(
    }
   },
   dismissButton = {}
- )}
+ )
+}
 
 @Composable
 private fun EditorDatasCartao(
  uiState: EdicaoUiState,
- onDiasAlterados: (String, String) -> Unit,
+ onDiasAntesVencimentoAlterado: (String) -> Unit,
+ onDiaVencimentoAlterado: (String) -> Unit,
  onSalvar: () -> Unit
 ) {
  Card(
@@ -2458,22 +2424,65 @@ private fun EditorDatasCartao(
    )
    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
     OutlinedTextField(
-     value = uiState.diaFechamentoTexto,
-     onValueChange = { novo -> onDiasAlterados(novo, uiState.diaVencimentoTexto) },
+     value = uiState.diasAntesVencimentoTexto,
+     onValueChange = onDiasAntesVencimentoAlterado,
      modifier = Modifier.weight(1f),
-     label = { Text("Fecha dia") },
+     label = { Text("Fecha quantos dias antes") },
      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
      singleLine = true
     )
     OutlinedTextField(
      value = uiState.diaVencimentoTexto,
-     onValueChange = { novo -> onDiasAlterados(uiState.diaFechamentoTexto, novo) },
+     onValueChange = onDiaVencimentoAlterado,
      modifier = Modifier.weight(1f),
      label = { Text("Vence dia") },
      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
      singleLine = true
     )
    }
+
+   val diasAntesVencimento = uiState.diasAntesVencimentoTexto
+    .toIntOrNull()
+    ?.coerceIn(1, 31)
+    ?: 8
+   val diaVencimento = uiState.diaVencimentoTexto
+    .toIntOrNull()
+    ?.coerceIn(1, 31)
+    ?: 5
+   val hoje = LocalDate.now()
+   val proximoVencimento = criarDataVencimento(
+    anoMes = YearMonth.from(hoje).let { anoMesAtual ->
+     val vencimentoNoMesAtual = criarDataVencimento(
+      anoMes = anoMesAtual,
+      diaVencimento = diaVencimento
+     )
+     if (vencimentoNoMesAtual.isAfter(hoje)) {
+      anoMesAtual
+     } else {
+      anoMesAtual.plusMonths(1)
+     }
+    },
+    diaVencimento = diaVencimento
+   )
+   val proximoFechamento = calcularDataFechamento(
+    dataVencimento = proximoVencimento,
+    diasAntesVencimento = diasAntesVencimento
+   )
+
+   Text(
+    text = "Próximo fechamento: ${
+     proximoFechamento.format(
+      DateTimeFormatter.ofPattern(
+       "dd 'de' MMMM",
+       Locale("pt", "BR")
+      )
+     )
+    }",
+    style = MaterialTheme.typography.bodySmall,
+    color = CorEdicao.copy(alpha = 0.75f),
+    modifier = Modifier.padding(top = 8.dp)
+   )
+
    Button(onClick = onSalvar, modifier = Modifier.fillMaxWidth()) {
     Text("Salvar datas")
    }
@@ -2500,21 +2509,10 @@ private fun LinhaContaSaldo(
 
  val context = LocalContext.current
 
- /*
-  * Caixa usa a chave "cef", enquanto o restante usa
-  * a própria instituicaoChave: nubank, c6, itau,
-  * picpay, mercado_pago, bradesco, santander etc.
-  */
  val logoRes = remember(conta.instituicaoChave) {
   val nomeArquivo = if (
-   conta.instituicaoChave.contains(
-    "caixa",
-    ignoreCase = true
-   ) ||
-   conta.instituicaoChave.equals(
-    "cx",
-    ignoreCase = true
-   )
+   conta.instituicaoChave.contains("caixa", ignoreCase = true) ||
+   conta.instituicaoChave.equals("cx", ignoreCase = true)
   ) {
    "cef"
   } else {
@@ -2562,11 +2560,6 @@ private fun LinhaContaSaldo(
       modifier = Modifier.size(24.dp)
      )
     } else {
-     /*
-      * Fallback:
-      * Só mostra iniciais se não existir um drawable
-      * correspondente em res/drawable.
-      */
      Text(
       text = conta.nome.take(2).uppercase(),
       color = conta.corHex.toColor(),
@@ -2723,18 +2716,13 @@ private fun FormularioContaSaldo(
     verticalArrangement = Arrangement.spacedBy(8.dp)
    ) {
     instituicoesPredefinidas.forEach { instituicao ->
-     val isSelected =
-      instituicao == uiState.instituicaoSelecionada
-
+     val isSelected = instituicao == uiState.instituicaoSelecionada
      val context = LocalContext.current
 
      val logoRes = remember(instituicao.chave) {
       val nomeArquivo = if (
        instituicao.sigla == "CX" ||
-       instituicao.chave.contains(
-        "caixa",
-        ignoreCase = true
-       )
+       instituicao.chave.contains("caixa", ignoreCase = true)
       ) {
        "cef"
       } else {
@@ -2809,21 +2797,13 @@ private fun FormularioContaSaldo(
     horizontalArrangement = Arrangement.spacedBy(8.dp)
    ) {
     val tipos = listOf(
-     TipoContaSaldo.CONTA to (
-             "Conta" to R.drawable.bank_saldo
-             ),
-     TipoContaSaldo.CARTEIRA to (
-             "Carteira" to R.drawable.wallet_saldo
-             ),
-     TipoContaSaldo.SALDO_RESERVADO to (
-             "Cofre" to R.drawable.safebox_saldo
-             )
+     TipoContaSaldo.CONTA to ("Conta" to R.drawable.bank_saldo),
+     TipoContaSaldo.CARTEIRA to ("Carteira" to R.drawable.wallet_saldo),
+     TipoContaSaldo.SALDO_RESERVADO to ("Cofre" to R.drawable.safebox_saldo)
     )
 
     tipos.forEach { (tipo, dados) ->
-     val selecionado =
-      tipo == uiState.tipoContaSelecionado
-
+     val selecionado = tipo == uiState.tipoContaSelecionado
      val label = dados.first
      val icone = dados.second
 
@@ -2899,7 +2879,6 @@ private fun FormularioContaSaldo(
     digits = saldoDigits,
     onDigitsChange = { novoDigits ->
      saldoDigits = novoDigits
-     // informa o ViewModel da mudança (espera dígitos)
      onSaldoAlterado(novoDigits)
     },
     modifier = Modifier.fillMaxWidth(),
@@ -2985,7 +2964,6 @@ private fun CampoContaSaldo(
  )
 }
 
-
 @Composable
 private fun AbasEdicao(
  secaoSelecionada: Int,
@@ -3053,50 +3031,24 @@ private fun AbasEdicaoItem(
  ) {
   Row(
    verticalAlignment = Alignment.CenterVertically,
-   modifier = Modifier.padding(horizontal = 8.dp) // padding reduzido
+   modifier = Modifier.padding(horizontal = 8.dp)
   ) {
    Icon(
     painter = painterResource(id = icone),
     contentDescription = texto,
     tint = Color.Unspecified,
-    modifier = Modifier.size(14.dp) // ícone um pouco menor
+    modifier = Modifier.size(14.dp)
    )
    Spacer(modifier = Modifier.width(6.dp))
    Text(
     text = texto,
     color = contentColor,
-    style = MaterialTheme.typography.bodySmall, // texto menor
+    style = MaterialTheme.typography.bodySmall,
     fontWeight = if (selecionada) FontWeight.SemiBold else FontWeight.Medium,
     maxLines = 1,
     overflow = TextOverflow.Ellipsis
    )
   }
- }
-}
-
-@Composable
-private fun BadgeInstituicao(instituicao: InstituicaoPredefinida) {
- Box(
-  modifier = Modifier
-   .size(40.dp)
-   .clip(CircleShape)
-   .background(instituicao.cor),
-  contentAlignment = Alignment.Center
- ) {
-  Text(instituicao.sigla, color = Color.White, fontWeight = FontWeight.Bold)
- }
-}
-
-@Composable
-private fun IconeCategoria(chave: String, cor: Color) {
- Box(
-  modifier = Modifier
-   .size(40.dp)
-   .clip(CircleShape)
-   .background(cor.copy(alpha = 0.16f)),
-  contentAlignment = Alignment.Center
- ) {
-  Icon(iconeCategoria(chave), contentDescription = null, tint = cor)
  }
 }
 
@@ -3123,11 +3075,6 @@ private fun String.toColor(): Color = try {
  Color(android.graphics.Color.parseColor(this))
 } catch (_: IllegalArgumentException) {
  CorEdicao
-}
-
-private fun String.formatarCentavosSemPrefixo(): String {
- val valor = filter(Char::isDigit).toLongOrNull() ?: return ""
- return "%d,%02d".format(valor / 100, valor % 100)
 }
 
 private fun Long.formatarMoedaPtBr(): String {

@@ -184,7 +184,7 @@ class InserirDespesaViewModel @Inject constructor(
         val dataPrimeiroVencimento = if (cartao != null) {
             calcularVencimentoCartao(
                 dataCompra = estadoAtual.dataCompra,
-                diaFechamento = cartao.diaFechamento,
+                diasAntesVencimento = cartao.diasAntesVencimento,
                 diaVencimento = cartao.diaVencimento
             )
         } else {
