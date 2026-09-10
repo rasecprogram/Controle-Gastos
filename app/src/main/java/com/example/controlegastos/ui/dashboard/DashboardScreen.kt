@@ -85,6 +85,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import com.example.controlegastos.domain.model.TipoLancamento
 
 
 private val CorCardSaldoAccent = Color(0xFF1B6B4A)
@@ -149,6 +150,7 @@ fun DashboardScreen(
 
                     FaturasProximas(
                         cartoes = uiState.cartoes,
+                        transacoes = uiState.transacoesDoMes,
                         visivel = uiState.numerosVisiveis,
                         onVerTodas = {
                             selectedIndex = 1
@@ -855,15 +857,21 @@ private fun IndicadorResumoFinanceiro(
 @Composable
 private fun FaturasProximas(
     cartoes: List<com.example.controlegastos.domain.model.Cartao>,
-    visivel: Boolean, // <--- ADICIONADO AQUI
+    transacoes: List<DespesaDetalhada>,
+    visivel: Boolean,
     onVerTodas: () -> Unit,
     modifier: Modifier = Modifier,
     diasAvisoEmBreve: Int = 10
 ) {
-    val ativos = cartoes.filter { it.ativo }
+    val ativos = cartoes.filter { cartao ->
+        cartao.ativo
+    }
+
     if (ativos.isEmpty()) return
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier.fillMaxWidth()
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -879,6 +887,7 @@ private fun FaturasProximas(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
             )
+
             Text(
                 text = "Ver todas",
                 modifier = Modifier
@@ -890,18 +899,59 @@ private fun FaturasProximas(
             )
         }
 
-        Column(modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        ) {
             ativos.forEach { cartao ->
-                val (daysUntil, _) = calcularProximoVencimento(cartao.diaVencimento)
+                val totalGastoDoCartao = transacoes
+                    .asSequence()
+                    .filter { despesa ->
+                        despesa.cartaoId == cartao.id
+                    }
+                    .filter { despesa ->
+                        despesa.tipoLancamento != TipoLancamento.FIXA
+                    }
+                    .sumOf { despesa ->
+                        despesa.valor
+                    }
+
+                val (daysUntil, _) = calcularProximoVencimento(
+                    cartao.diaVencimento
+                )
+
                 val estaEmBreve = daysUntil <= diasAvisoEmBreve
 
-                val borderColor = if (estaEmBreve) Color(0xFFFFE0B2) else Color(0xFFCFE2D8)
-                val backgroundColor = if (estaEmBreve) Color(0xFFFFFBF2) else Color(0xFFEEF6F1)
-                val subtitleColor = if (estaEmBreve) Color(0xFFD97706) else Color(0xFF136451)
-                val badgeBgColor = if (estaEmBreve) Color(0xFFFFE8CC) else Color(0xFFD9E9DF)
-                val badgeTextColor = if (estaEmBreve) Color(0xFFB45309) else Color(0xFF136451)
+                val borderColor = if (estaEmBreve) {
+                    Color(0xFFFFE0B2)
+                } else {
+                    Color(0xFFCFE2D8)
+                }
+
+                val backgroundColor = if (estaEmBreve) {
+                    Color(0xFFFFFBF2)
+                } else {
+                    Color(0xFFEEF6F1)
+                }
+
+                val subtitleColor = if (estaEmBreve) {
+                    Color(0xFFD97706)
+                } else {
+                    Color(0xFF136451)
+                }
+
+                val badgeBgColor = if (estaEmBreve) {
+                    Color(0xFFFFE8CC)
+                } else {
+                    Color(0xFFD9E9DF)
+                }
+
+                val badgeTextColor = if (estaEmBreve) {
+                    Color(0xFFB45309)
+                } else {
+                    Color(0xFF136451)
+                }
 
                 Card(
                     modifier = Modifier
@@ -913,8 +963,12 @@ private fun FaturasProximas(
                             shape = RoundedCornerShape(16.dp)
                         ),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = backgroundColor),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    colors = CardDefaults.cardColors(
+                        containerColor = backgroundColor
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 0.dp
+                    )
                 ) {
                     Row(
                         modifier = Modifier
@@ -923,14 +977,30 @@ private fun FaturasProximas(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         val context = LocalContext.current
-                        val marcaKey = cartao.marcaChave.orEmpty().lowercase(Locale("pt", "BR"))
+
+                        val marcaKey = cartao.marcaChave
+                            .orEmpty()
+                            .lowercase(Locale("pt", "BR"))
+
                         val resId = remember(marcaKey) {
-                            if (marcaKey.isBlank()) 0 else context.resources.getIdentifier(
-                                marcaKey,
-                                "drawable",
-                                context.packageName
-                            )
+                            if (marcaKey.isBlank()) {
+                                0
+                            } else {
+                                context.resources.getIdentifier(
+                                    marcaKey,
+                                    "drawable",
+                                    context.packageName
+                                )
+                            }
                         }
+
+                        val ehPicPay = cartao.nome.contains(
+                            "PicPay",
+                            ignoreCase = true
+                        ) || marcaKey.contains(
+                            "picpay",
+                            ignoreCase = true
+                        )
 
                         if (resId != 0) {
                             Box(
@@ -944,28 +1014,66 @@ private fun FaturasProximas(
                                     painter = painterResource(id = resId),
                                     contentDescription = cartao.nome,
                                     contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                                    colorFilter = if (ehPicPay) {
+                                        androidx.compose.ui.graphics.ColorFilter.tint(
+                                            Color(0xFF04C563)
+                                        )
+                                    } else {
+                                        null
+                                    },
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(8.dp)
                                 )
                             }
                         } else {
-                            val corBg = try {
-                                val parsed = android.graphics.Color.parseColor(cartao.corHex)
-                                Color(parsed)
-                            } catch (_: Exception) {
-                                when {
-                                    cartao.nome.contains("C6", ignoreCase = true) -> Color(
-                                        0xFF263238
-                                    )
+                            val corBg = when {
+                                ehPicPay -> {
+                                    Color(0xFF04C563)
+                                }
 
-                                    cartao.nome.contains("Nu", ignoreCase = true) -> Color(
-                                        0xFF8B3DFF
-                                    )
+                                else -> {
+                                    try {
+                                        Color(
+                                            android.graphics.Color.parseColor(
+                                                cartao.corHex
+                                            )
+                                        )
+                                    } catch (_: Exception) {
+                                        when {
+                                            cartao.nome.contains(
+                                                "C6",
+                                                ignoreCase = true
+                                            ) -> {
+                                                Color(0xFF263238)
+                                            }
 
-                                    else -> Color(0xFF5F8D84)
+                                            cartao.nome.contains(
+                                                "Nu",
+                                                ignoreCase = true
+                                            ) -> {
+                                                Color(0xFF8B3DFF)
+                                            }
+
+                                            else -> {
+                                                Color(0xFF5F8D84)
+                                            }
+                                        }
+                                    }
                                 }
                             }
+
+                            val siglaCartao = cartao.marcaChave
+                                .takeIf { chave ->
+                                    chave.isNotBlank()
+                                }
+                                ?.uppercase()
+                                ?.take(2)
+                                ?: cartao.nome
+                                    .firstOrNull()
+                                    ?.uppercase()
+                                    ?.toString()
+                                ?: "?"
 
                             Box(
                                 modifier = Modifier
@@ -975,10 +1083,7 @@ private fun FaturasProximas(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = cartao.marcaChave.takeIf { it.isNotBlank() }?.uppercase()
-                                        ?.take(2)
-                                        ?: cartao.nome.firstOrNull()?.uppercase()?.toString()
-                                        ?: "?",
+                                    text = siglaCartao,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
                                     color = Color.White
@@ -988,7 +1093,9 @@ private fun FaturasProximas(
 
                         Spacer(modifier = Modifier.width(14.dp))
 
-                        Column(modifier = Modifier.weight(1f)) {
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
                             Text(
                                 text = cartao.nome,
                                 style = MaterialTheme.typography.titleMedium,
@@ -999,10 +1106,15 @@ private fun FaturasProximas(
                             Spacer(modifier = Modifier.height(2.dp))
 
                             val textoVencimento = buildString {
-                                append("Vence em ${daysUntil} dias")
+                                append("Vence em $daysUntil dias")
                                 append(" · ")
-                                append(cartao.limiteCentavos.formatarMoeda(visivel)) // <--- USANDO `visivel` AQUI
+                                append(
+                                    totalGastoDoCartao.formatarMoeda(
+                                        visivel
+                                    )
+                                )
                             }
+
                             Text(
                                 text = textoVencimento,
                                 style = MaterialTheme.typography.bodySmall,
@@ -1013,7 +1125,11 @@ private fun FaturasProximas(
 
                         Spacer(modifier = Modifier.width(12.dp))
 
-                        val badgeText = if (estaEmBreve) "Em breve" else "${daysUntil}d"
+                        val badgeText = if (estaEmBreve) {
+                            "Em breve"
+                        } else {
+                            "${daysUntil}d"
+                        }
 
                         Box(
                             modifier = Modifier
@@ -1035,6 +1151,7 @@ private fun FaturasProximas(
         }
     }
 }
+
 
 // Helper: calcula (daysUntil, dueDate)
 private fun calcularProximoVencimento(diaVencimento: Int): Pair<Int, LocalDate> {
