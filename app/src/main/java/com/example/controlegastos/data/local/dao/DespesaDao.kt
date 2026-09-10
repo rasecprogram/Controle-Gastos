@@ -533,6 +533,15 @@ interface DespesaDao {
     @Query("SELECT * FROM tb_despesas ORDER BY id ASC")
     suspend fun buscarTodasParaBackup(): List<DespesaEntity>
 
+    @Query(
+        """
+    SELECT * FROM tb_despesas
+    WHERE cartao_id IS NOT NULL
+    ORDER BY data_compra ASC
+    """
+    )
+    fun observarTodasDespesasDeCartao(): Flow<List<DespesaEntity>>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun inserirTodasParaBackup(
         despesas: List<DespesaEntity>

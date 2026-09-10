@@ -78,6 +78,8 @@ class DespesaRepositoryImpl @Inject constructor(
      * decide, por cartão, a qual fatura elas pertencem considerando
      * o dia de fechamento.
      */
+
+
     override fun observarDespesasDetalhadasPorMes(
         mes: Int,
         ano: Int
@@ -93,6 +95,7 @@ class DespesaRepositoryImpl @Inject constructor(
                 }
             }
     }
+    
 
     override fun observarDetalhadasEntre(
         inicioEpoch: Long,

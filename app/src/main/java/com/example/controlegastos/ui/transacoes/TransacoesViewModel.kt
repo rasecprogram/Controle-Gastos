@@ -10,6 +10,8 @@ import com.example.controlegastos.domain.model.TipoLancamento
 import com.example.controlegastos.domain.repository.CartaoRepository
 import com.example.controlegastos.domain.repository.ContaSaldoRepository
 import com.example.controlegastos.domain.repository.DespesaRepository
+import com.example.controlegastos.domain.util.calcularFimExclusivoCicloFatura
+import com.example.controlegastos.domain.util.calcularInicioCicloFatura
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,8 +24,6 @@ import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.ZoneOffset
 import javax.inject.Inject
-import com.example.controlegastos.domain.util.calcularFimExclusivoCicloFatura
-import com.example.controlegastos.domain.util.calcularInicioCicloFatura
 
 @HiltViewModel
 class TransacoesViewModel @Inject constructor(
@@ -32,21 +32,28 @@ class TransacoesViewModel @Inject constructor(
     private val contaSaldoRepository: ContaSaldoRepository
 ) : ViewModel() {
 
-    private val mesSelecionado = MutableStateFlow(YearMonth.now())
+    private val mesSelecionado = MutableStateFlow(
+        YearMonth.now()
+    )
 
     private val valoresVisiveis = MutableStateFlow(true)
 
-    private val abaSelecionada = MutableStateFlow(AbaFaturas.ABERTAS)
+    private val abaSelecionada = MutableStateFlow(
+        AbaFaturas.ABERTAS
+    )
 
-    private val cartoesExpandidos = MutableStateFlow<Set<Int>>(emptySet())
+    private val cartoesExpandidos = MutableStateFlow<Set<Int>>(
+        emptySet()
+    )
 
     /*
-     * Carrega as despesas do mês selecionado pela data da compra.
+     * Despesas cujo dataCompra pertence ao mês selecionado.
      *
-     * Este fluxo é usado para:
-     * - despesas avulsas;
-     * - despesas fixas;
-     * - cálculo do saldo mensal.
+     * Usadas para:
+     * - despesas pagas diretamente por conta;
+     * - despesas fixas daquele mês;
+     * - valor "Despesas" do card de saldo;
+     * - total de despesas do mês.
      */
     private val despesasDoMesCompra: Flow<List<DespesaDetalhada>> =
         mesSelecionado.flatMapLatest { mes ->
@@ -57,19 +64,25 @@ class TransacoesViewModel @Inject constructor(
         }
 
     /*
-     * Carrega um intervalo maior para formar a fatura completa.
+     * Busca ampla para formar a fatura do mês selecionado.
      *
-     * Para a fatura de Agosto:
-     * - início da busca: 01/07;
-     * - fim da busca: 01/09.
+     * A fatura de setembro pode conter compras do fim de julho,
+     * agosto e setembro, conforme os dias de fechamento de cada cartão.
      *
-     * Depois cada cartão aplica seu próprio dia de fechamento:
-     * fechamento 29 => ciclo de 30/07 até 29/08.
+     * Por isso são buscados três meses:
+     * - dois meses antes;
+     * - mês selecionado;
+     * - até o primeiro dia do mês seguinte.
+     *
+     * Exemplo:
+     * Para setembro/2026:
+     * início da busca: 01/07/2026
+     * fim da busca:    01/10/2026
      */
     private val despesasParaFaturas: Flow<List<DespesaDetalhada>> =
         mesSelecionado.flatMapLatest { mes ->
             val inicioEpoch = mes
-                .minusMonths(1)
+                .minusMonths(2)
                 .atDay(1)
                 .atStartOfDay(ZoneOffset.UTC)
                 .toInstant()
@@ -95,9 +108,7 @@ class TransacoesViewModel @Inject constructor(
         cartaoRepository.observarTodos()
 
     /*
-     * Combina os quatro estados visuais primeiro.
-     * Assim, não ultrapassamos o limite de cinco Flow na assinatura
-     * tipada do combine da versão atual de Kotlin/Coroutines.
+     * Estados de interação/controladores da tela.
      */
     private val filtrosTela = combine(
         mesSelecionado,
@@ -114,14 +125,19 @@ class TransacoesViewModel @Inject constructor(
     }
 
     /*
-     * Combina os quatro fluxos de dados primeiro.
+     * Dados persistidos necessários pela tela.
      */
     private val dadosTela = combine(
         despesasDoMesCompra,
         despesasParaFaturas,
         contas,
         cartoes
-    ) { despesasMesCompra, despesasFaturas, contasAtuais, cartoesAtuais ->
+    ) {
+            despesasMesCompra,
+            despesasFaturas,
+            contasAtuais,
+            cartoesAtuais ->
+
         DadosTransacoes(
             despesasMesCompra = despesasMesCompra,
             despesasFaturas = despesasFaturas,
@@ -130,9 +146,6 @@ class TransacoesViewModel @Inject constructor(
         )
     }
 
-    /*
-     * Combinação final com somente dois Flow.
-     */
     val uiState: StateFlow<TransacoesUiState> = combine(
         filtrosTela,
         dadosTela
@@ -142,10 +155,30 @@ class TransacoesViewModel @Inject constructor(
             conta.ativo
         }
 
+        /*
+         * Despesas avulsas são despesas:
+         * - sem cartão;
+         * - não fixas.
+         *
+         * Elas continuam sendo usadas para calcular o saldo real
+         * quando já foram pagas diretamente por uma conta.
+         */
         val despesasAvulsas = dados.despesasMesCompra.filter { despesa ->
             despesa.cartaoId == null &&
                     despesa.tipoLancamento != TipoLancamento.FIXA
         }
+
+        /*
+         * Total exibido no card superior da tela de transações.
+         *
+         * Inclui:
+         * - compras únicas no cartão;
+         * - compras parceladas no cartão;
+         * - despesas fixas daquele mês.
+         *
+         * Não inclui despesas avulsas pagas por conta/carteira,
+         * pois essas já afetam diretamente o saldo das contas.
+         */
         val despesasDoMesTotal = dados.despesasMesCompra
             .asSequence()
             .filter { despesa ->
@@ -165,10 +198,14 @@ class TransacoesViewModel @Inject constructor(
         }
 
         /*
-         * Despesas de cartão não entram aqui.
-         * Elas reduzem o saldo somente no pagamento da fatura.
+         * O saldo disponível é reduzido somente por despesas avulsas
+         * já pagas usando uma conta de saldo.
+         *
+         * Compras no cartão não reduzem o saldo aqui, porque só
+         * reduzem a conta quando a fatura é efetivamente paga.
          */
         val despesasAvulsasTotal = despesasAvulsas
+            .asSequence()
             .filter { despesa ->
                 despesa.contaSaldoId != null &&
                         despesa.statusPago
@@ -177,6 +214,15 @@ class TransacoesViewModel @Inject constructor(
                 despesa.valor
             }
 
+        /*
+         * Cria uma fatura para cada cartão ativo, usando o ciclo
+         * calculado pelo vencimento e pelos dias antes do vencimento.
+         *
+         * Compra no dia de fechamento pertence à próxima fatura,
+         * pois o fim do ciclo é exclusivo:
+         *
+         * dataCompra < fimExclusivoCicloMillis
+         */
         val faturas = dados.cartoes
             .filter { cartao ->
                 cartao.ativo
@@ -194,6 +240,7 @@ class TransacoesViewModel @Inject constructor(
                     diasAntesVencimento = cartao.diasAntesVencimento,
                     diaVencimento = cartao.diaVencimento
                 )
+
                 val inicioCicloMillis = inicioCiclo
                     .atStartOfDay(ZoneOffset.UTC)
                     .toInstant()
@@ -205,19 +252,24 @@ class TransacoesViewModel @Inject constructor(
                     .toEpochMilli()
 
                 val despesasDoCartao = dados.despesasFaturas
+                    .asSequence()
                     .filter { despesa ->
                         despesa.cartaoId == cartao.id &&
+                                despesa.tipoLancamento != TipoLancamento.FIXA &&
                                 despesa.dataCompra >= inicioCicloMillis &&
                                 despesa.dataCompra < fimExclusivoCicloMillis
                     }
                     .sortedBy { despesa ->
                         despesa.dataCompra
                     }
+                    .toList()
 
                 FaturaCartao(
                     cartao = cartao,
                     mesAno = filtros.mes,
-                    totalCentavos = despesasDoCartao.sumOf { it.valor },
+                    totalCentavos = despesasDoCartao.sumOf { despesa ->
+                        despesa.valor
+                    },
                     despesas = despesasDoCartao,
                     paga = despesasDoCartao.isNotEmpty() &&
                             despesasDoCartao.all { despesa ->
@@ -269,11 +321,15 @@ class TransacoesViewModel @Inject constructor(
         valoresVisiveis.value = !valoresVisiveis.value
     }
 
-    fun selecionarAbaFaturas(aba: AbaFaturas) {
+    fun selecionarAbaFaturas(
+        aba: AbaFaturas
+    ) {
         abaSelecionada.value = aba
     }
 
-    fun alternarCartao(cartaoId: Int) {
+    fun alternarCartao(
+        cartaoId: Int
+    ) {
         cartoesExpandidos.value = if (
             cartaoId in cartoesExpandidos.value
         ) {
@@ -311,60 +367,12 @@ class TransacoesViewModel @Inject constructor(
                     erro.message
                         ?: "Não foi possível pagar esta fatura."
                 )
-            } catch (erro: Exception) {
+            } catch (_: Exception) {
                 aoConcluir(
                     "Ocorreu um erro ao pagar a fatura."
                 )
             }
         }
-    }
-
-    /*
-     * Exemplo:
-     *
-     * Fatura Agosto/2026, cartão fecha no dia 29:
-     * início = 30/07/2026 às 00:00 UTC
-     */
-    private fun inicioCicloFatura(
-        mesFatura: YearMonth,
-        diaFechamento: Int
-    ): Long {
-        val mesAnterior = mesFatura.minusMonths(1)
-
-        val fechamentoMesAnterior = mesAnterior.atDay(
-            diaFechamento.coerceAtMost(
-                mesAnterior.lengthOfMonth()
-            )
-        )
-
-        return fechamentoMesAnterior
-            .plusDays(1)
-            .atStartOfDay(ZoneOffset.UTC)
-            .toInstant()
-            .toEpochMilli()
-    }
-
-    /*
-     * Exemplo:
-     *
-     * Fatura Agosto/2026, cartão fecha no dia 29:
-     * fim exclusivo = 30/08/2026 às 00:00 UTC
-     */
-    private fun fimExclusivoCicloFatura(
-        mesFatura: YearMonth,
-        diaFechamento: Int
-    ): Long {
-        val fechamentoMesAtual = mesFatura.atDay(
-            diaFechamento.coerceAtMost(
-                mesFatura.lengthOfMonth()
-            )
-        )
-
-        return fechamentoMesAtual
-            .plusDays(1)
-            .atStartOfDay(ZoneOffset.UTC)
-            .toInstant()
-            .toEpochMilli()
     }
 }
 
