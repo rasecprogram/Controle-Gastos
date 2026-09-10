@@ -1491,11 +1491,7 @@ private fun CardFaturaCompleta(
 private fun diasParaVencerTexto(fatura: FaturaCartao): String {
     val hoje = java.time.LocalDate.now()
 
-    val vencimento = fatura.mesAno.atDay(
-        fatura.cartao.diaVencimento.coerceAtMost(
-            fatura.mesAno.lengthOfMonth()
-        )
-    )
+    val vencimento = fatura.dataVencimento
 
     val dias = java.time.temporal.ChronoUnit.DAYS.between(
         hoje,

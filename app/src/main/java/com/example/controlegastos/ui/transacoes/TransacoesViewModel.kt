@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.ZoneOffset
 import javax.inject.Inject
+import com.example.controlegastos.domain.util.calcularDataVencimentoDaFatura
 
 @HiltViewModel
 class TransacoesViewModel @Inject constructor(
@@ -240,6 +241,11 @@ class TransacoesViewModel @Inject constructor(
                     diasAntesVencimento = cartao.diasAntesVencimento,
                     diaVencimento = cartao.diaVencimento
                 )
+                val dataVencimento = calcularDataVencimentoDaFatura(
+                    mesFatura = filtros.mes,
+                    diaVencimento = cartao.diaVencimento,
+                    diasAntesVencimento = cartao.diasAntesVencimento
+                )
 
                 val inicioCicloMillis = inicioCiclo
                     .atStartOfDay(ZoneOffset.UTC)
@@ -267,6 +273,7 @@ class TransacoesViewModel @Inject constructor(
                 FaturaCartao(
                     cartao = cartao,
                     mesAno = filtros.mes,
+                    dataVencimento = dataVencimento,
                     totalCentavos = despesasDoCartao.sumOf { despesa ->
                         despesa.valor
                     },
