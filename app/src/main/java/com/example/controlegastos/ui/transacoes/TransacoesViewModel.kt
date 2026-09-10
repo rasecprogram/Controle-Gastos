@@ -25,6 +25,7 @@ import java.time.YearMonth
 import java.time.ZoneOffset
 import javax.inject.Inject
 import com.example.controlegastos.domain.util.calcularDataVencimentoDaFatura
+import com.example.controlegastos.domain.util.criarDataVencimento
 
 @HiltViewModel
 class TransacoesViewModel @Inject constructor(
@@ -230,6 +231,12 @@ class TransacoesViewModel @Inject constructor(
             }
             .map { cartao ->
 
+
+                val dataVencimentoFatura = criarDataVencimento(
+                    anoMes = filtros.mes.plusMonths(1),
+                    diaVencimento = cartao.diaVencimento
+                )
+
                 val inicioCiclo = calcularInicioCicloFatura(
                     mesFatura = filtros.mes,
                     diasAntesVencimento = cartao.diasAntesVencimento,
@@ -273,7 +280,7 @@ class TransacoesViewModel @Inject constructor(
                 FaturaCartao(
                     cartao = cartao,
                     mesAno = filtros.mes,
-                    dataVencimento = dataVencimento,
+                    dataVencimento = dataVencimentoFatura,
                     totalCentavos = despesasDoCartao.sumOf { despesa ->
                         despesa.valor
                     },

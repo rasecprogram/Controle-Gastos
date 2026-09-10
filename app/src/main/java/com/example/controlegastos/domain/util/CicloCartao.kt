@@ -68,8 +68,16 @@ fun calcularInicioCicloFatura(
     diasAntesVencimento: Int,
     diaVencimento: Int
 ): LocalDate {
+    require(diasAntesVencimento in 1..31) {
+        "Os dias antes do vencimento devem estar entre 1 e 31."
+    }
+
+    require(diaVencimento in 1..31) {
+        "O dia de vencimento deve estar entre 1 e 31."
+    }
+
     val vencimentoFaturaAnterior = criarDataVencimento(
-        anoMes = mesFatura.minusMonths(1),
+        anoMes = mesFatura,
         diaVencimento = diaVencimento
     )
 
@@ -109,13 +117,21 @@ fun calcularFimExclusivoCicloFatura(
     diasAntesVencimento: Int,
     diaVencimento: Int
 ): LocalDate {
-    val vencimentoFatura = criarDataVencimento(
-        anoMes = mesFatura,
+    require(diasAntesVencimento in 1..31) {
+        "Os dias antes do vencimento devem estar entre 1 e 31."
+    }
+
+    require(diaVencimento in 1..31) {
+        "O dia de vencimento deve estar entre 1 e 31."
+    }
+
+    val vencimentoDaFatura = criarDataVencimento(
+        anoMes = mesFatura.plusMonths(1),
         diaVencimento = diaVencimento
     )
 
     return calcularDataFechamento(
-        dataVencimento = vencimentoFatura,
+        dataVencimento = vencimentoDaFatura,
         diasAntesVencimento = diasAntesVencimento
     )
 }
