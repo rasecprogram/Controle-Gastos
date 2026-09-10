@@ -2,25 +2,29 @@
 
 package com.example.controlegastos.ui.transacoes
 
-import android.R.attr.text
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -32,15 +36,14 @@ import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.RadioButtonChecked
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -52,7 +55,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,11 +63,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -73,6 +82,8 @@ import com.example.controlegastos.domain.model.ContaSaldo
 import com.example.controlegastos.domain.model.DespesaDetalhada
 import com.example.controlegastos.domain.model.FaturaCartao
 import com.example.controlegastos.domain.model.TipoContaSaldo
+import com.example.controlegastos.domain.model.TipoLancamento
+import com.example.controlegastos.ui.components.BarraNavegacaoInferior
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.Instant
@@ -80,31 +91,6 @@ import java.time.YearMonth
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.ui.window.Dialog
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.draw.blur
-import com.example.controlegastos.domain.model.TipoLancamento
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.ui.window.Dialog
-import com.example.controlegastos.ui.components.BarraNavegacaoInferior
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.draw.rotate
 
 
 private val CorFundoApp = Color(0xFFECF0ED)
@@ -121,6 +107,7 @@ private val CorDespesaValor = Color(0xFFFF9E80)
 private val CorFundoIconeReceita = Color(0xFF1B4D3E)
 private val CorFundoIconeDespesa = Color(0xFF503431)
 val CorConfirmarPagamento = Color(0xFF225E43)
+
 @Composable
 fun TransacoesScreen(
     onVoltar: () -> Unit,
@@ -519,7 +506,6 @@ fun TransacoesScreen(
         )
     }
 }
-
 
 
 @Composable
@@ -955,7 +941,9 @@ private fun AbasFaturas(
                             modifier = Modifier
                                 .size(20.dp)
                                 .background(
-                                    color = if (isSelecionada) Color.White.copy(alpha = 0.2f) else Color(0xFFF3F4F6),
+                                    color = if (isSelecionada) Color.White.copy(alpha = 0.2f) else Color(
+                                        0xFFF3F4F6
+                                    ),
                                     shape = CircleShape
                                 ),
                             contentAlignment = Alignment.Center
@@ -1762,8 +1750,8 @@ private fun IconeCategoriaDoCardLocal(
             Text(text = chave, fontSize = 18.sp)
         }
 
-        }
     }
+}
 
 
 private fun String.ehEmojiLocal(): Boolean {

@@ -5,6 +5,8 @@
 
 package com.example.controlegastos.ui.gastos
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,7 +22,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -33,23 +34,38 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Celebration
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.Subscriptions
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SheetValue
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,52 +77,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.controlegastos.domain.model.Cartao
 import com.example.controlegastos.domain.model.DespesaDetalhada
 import com.example.controlegastos.domain.model.GastoMensal
-import java.text.NumberFormat
+import com.example.controlegastos.ui.components.BarraNavegacaoInferior
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material.icons.filled.Fastfood
-import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Celebration
-import androidx.compose.material.icons.filled.Subscriptions
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.Flight
-import androidx.compose.material.icons.filled.ReceiptLong
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.sp
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.filled.Sort
-import androidx.compose.ui.text.style.TextOverflow
-import com.example.controlegastos.domain.model.Cartao
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
-import com.example.controlegastos.ui.components.BarraNavegacaoInferior
 
 private val CorGastos = Color(0xFF5F8D84)
 private val CorGastosClara = Color(0xFF9DBCB5)
@@ -175,7 +164,9 @@ fun GastosScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF8A929B),
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
                 )
             },
             confirmButton = {
@@ -231,7 +222,9 @@ fun GastosScreen(
     }
 
     // Envolvendo com Box para fixar a barra de navegação inferior na tela toda
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFEEF2EF))) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(Color(0xFFEEF2EF))) {
         androidx.compose.material3.Scaffold(
             containerColor = Color(0xFFEEF2EF),
             topBar = {
@@ -441,14 +434,19 @@ fun GastosScreen(
                                             }
                                         }
 
-                                        val floorInts = rawPercents.map { kotlin.math.floor(it).toInt() }.toMutableList()
+                                        val floorInts =
+                                            rawPercents.map { kotlin.math.floor(it).toInt() }
+                                                .toMutableList()
                                         var diff = 100 - floorInts.sum()
                                         if (diff > 0) {
-                                            val remainders = rawPercents.mapIndexed { idx, v -> idx to (v - kotlin.math.floor(v)) }
+                                            val remainders = rawPercents.mapIndexed { idx, v ->
+                                                idx to (v - kotlin.math.floor(v))
+                                            }
                                                 .sortedByDescending { it.second }
                                             var i = 0
                                             while (diff > 0 && i < remainders.size) {
-                                                floorInts[remainders[i].first] = floorInts[remainders[i].first] + 1
+                                                floorInts[remainders[i].first] =
+                                                    floorInts[remainders[i].first] + 1
                                                 diff--
                                                 i++
                                             }
@@ -459,7 +457,8 @@ fun GastosScreen(
                                             val percentualAjustado = floorInts.getOrNull(index) ?: 0
 
                                             // COR ÚNICA E GARANTIDA PELO ID
-                                            val corCategoria = corDinamicaCategoria(gasto.categoriaId)
+                                            val corCategoria =
+                                                corDinamicaCategoria(gasto.categoriaId)
 
                                             Column {
                                                 Row(
@@ -499,7 +498,8 @@ fun GastosScreen(
                                                     }
                                                 }
 
-                                                val fraction = (percentualReal / 100f).coerceIn(0f, 1f)
+                                                val fraction =
+                                                    (percentualReal / 100f).coerceIn(0f, 1f)
                                                 val animatedFraction by animateFloatAsState(
                                                     targetValue = fraction,
                                                     animationSpec = tween(durationMillis = 600)
@@ -581,7 +581,11 @@ fun GastosScreen(
                                     }
 
                                     MaterialTheme(
-                                        shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(12.dp))
+                                        shapes = MaterialTheme.shapes.copy(
+                                            extraSmall = RoundedCornerShape(
+                                                12.dp
+                                            )
+                                        )
                                     ) {
                                         DropdownMenu(
                                             expanded = sortExpanded,
@@ -589,13 +593,20 @@ fun GastosScreen(
                                             modifier = Modifier
                                                 .width(125.dp)
                                                 .background(Color.White)
-                                                .border(BorderStroke(1.dp, Color(0xFFE1E7E3)), RoundedCornerShape(12.dp))
+                                                .border(
+                                                    BorderStroke(1.dp, Color(0xFFE1E7E3)),
+                                                    RoundedCornerShape(12.dp)
+                                                )
                                         ) {
                                             val selectedData = sortMode == SortMode.DATA
                                             Box(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .background(if (selectedData) CorGastos.copy(alpha = 0.12f) else Color.Transparent)
+                                                    .background(
+                                                        if (selectedData) CorGastos.copy(
+                                                            alpha = 0.12f
+                                                        ) else Color.Transparent
+                                                    )
                                                     .clickable {
                                                         sortMode = SortMode.DATA
                                                         sortExpanded = false
@@ -604,7 +615,9 @@ fun GastosScreen(
                                             ) {
                                                 Text(
                                                     text = "Mais recentes",
-                                                    color = if (selectedData) CorGastos else Color(0xFF78909C),
+                                                    color = if (selectedData) CorGastos else Color(
+                                                        0xFF78909C
+                                                    ),
                                                     fontWeight = if (selectedData) FontWeight.SemiBold else FontWeight.Medium,
                                                     style = MaterialTheme.typography.labelMedium
                                                 )
@@ -614,7 +627,11 @@ fun GastosScreen(
                                             Box(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .background(if (selectedValor) CorGastos.copy(alpha = 0.12f) else Color.Transparent)
+                                                    .background(
+                                                        if (selectedValor) CorGastos.copy(
+                                                            alpha = 0.12f
+                                                        ) else Color.Transparent
+                                                    )
                                                     .clickable {
                                                         sortMode = SortMode.VALOR
                                                         sortExpanded = false
@@ -623,7 +640,9 @@ fun GastosScreen(
                                             ) {
                                                 Text(
                                                     text = "Maior valor",
-                                                    color = if (selectedValor) CorGastos else Color(0xFF78909C),
+                                                    color = if (selectedValor) CorGastos else Color(
+                                                        0xFF78909C
+                                                    ),
                                                     fontWeight = if (selectedValor) FontWeight.SemiBold else FontWeight.Medium,
                                                     style = MaterialTheme.typography.labelMedium
                                                 )
@@ -640,21 +659,29 @@ fun GastosScreen(
                                 SortMode.VALOR -> uiState.despesasDoMes.sortedByDescending { it.valor }
                             }
 
-                            fun dateOf(d: DespesaDetalhada) = Instant.ofEpochMilli(d.dataCompra).atZone(ZoneOffset.UTC).toLocalDate()
+                            fun dateOf(d: DespesaDetalhada) =
+                                Instant.ofEpochMilli(d.dataCompra).atZone(ZoneOffset.UTC)
+                                    .toLocalDate()
 
                             val despesasPorDia: Map<java.time.LocalDate, List<DespesaDetalhada>> =
                                 despesasOrdenadas.groupBy { desp -> dateOf(desp) }
 
-                            val diasOrdenados: List<java.time.LocalDate> = if (sortMode == SortMode.DATA) {
-                                despesasPorDia.keys.sortedDescending()
-                            } else {
-                                despesasOrdenadas.map { dateOf(it) }.distinct()
-                            }
+                            val diasOrdenados: List<java.time.LocalDate> =
+                                if (sortMode == SortMode.DATA) {
+                                    despesasPorDia.keys.sortedDescending()
+                                } else {
+                                    despesasOrdenadas.map { dateOf(it) }.distinct()
+                                }
 
                             diasOrdenados.forEach { dia ->
                                 val listaDoDia = despesasOrdenadas.filter { dateOf(it) == dia }
                                 Text(
-                                    text = dia.format(DateTimeFormatter.ofPattern("d 'de' MMMM", Locale("pt", "BR"))),
+                                    text = dia.format(
+                                        DateTimeFormatter.ofPattern(
+                                            "d 'de' MMMM",
+                                            Locale("pt", "BR")
+                                        )
+                                    ),
                                     color = Color(0xFF6F7C76),
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(vertical = 6.dp)
@@ -755,12 +782,20 @@ private fun LancamentoItem(
                     val cartao = cartoes.firstOrNull { it.id == despesa.cartaoId }
                     if (cartao != null) {
                         val context = LocalContext.current
-                        val marcaChaveLower = cartao.marcaChave.orEmpty().lowercase(Locale("pt", "BR"))
+                        val marcaChaveLower =
+                            cartao.marcaChave.orEmpty().lowercase(Locale("pt", "BR"))
                         val resIdCard = remember(marcaChaveLower) {
-                            if (marcaChaveLower.isBlank()) 0 else context.resources.getIdentifier(marcaChaveLower, "drawable", context.packageName)
+                            if (marcaChaveLower.isBlank()) 0 else context.resources.getIdentifier(
+                                marcaChaveLower,
+                                "drawable",
+                                context.packageName
+                            )
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 6.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(start = 6.dp)
+                        ) {
                             if (resIdCard != 0) {
                                 Image(
                                     painter = painterResource(id = resIdCard),
@@ -831,7 +866,11 @@ private fun IconeCategoriaPill(
     val chave = iconeChave ?: ""
     val context = LocalContext.current
     val resId = remember(chave) {
-        if (chave.isBlank()) 0 else context.resources.getIdentifier(chave, "drawable", context.packageName)
+        if (chave.isBlank()) 0 else context.resources.getIdentifier(
+            chave,
+            "drawable",
+            context.packageName
+        )
     }
 
     // Pega a cor exclusiva gerada pelo ID
@@ -1231,7 +1270,6 @@ private fun ResumoMesSelecionado(
         }
     }
 }
-
 
 
 @Composable

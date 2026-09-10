@@ -2,130 +2,93 @@
 
 package com.example.controlegastos.ui.dashboard
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Celebration
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.ReceiptLong
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.Subscriptions
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.SheetValue
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberStandardBottomSheetState
-import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.controlegastos.domain.model.DespesaDetalhada
 import com.example.controlegastos.domain.model.GastoPorCategoria
+import com.example.controlegastos.ui.components.BarraNavegacaoInferior
+import kotlinx.coroutines.delay
+import java.text.NumberFormat
 import java.time.Instant
+import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.Locale
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Assignment
-import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.*
-import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material.icons.filled.Fastfood
-import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Celebration
-import androidx.compose.material.icons.filled.Subscriptions
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.Flight
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material3.Divider
-import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import java.time.LocalDate
 import java.time.temporal.ChronoUnit
-import java.time.YearMonth
-import androidx.compose.foundation.border
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.animateFloatAsState
-import kotlinx.coroutines.delay
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import java.text.NumberFormat
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material3.VerticalDivider
-import com.example.controlegastos.ui.components.BarraNavegacaoInferior
-
-
+import java.util.Locale
 
 
 private val CorCardSaldoAccent = Color(0xFF1B6B4A)
+
 @Composable
 fun DashboardScreen(
     onGerenciarCategorias: () -> Unit,
@@ -216,7 +179,9 @@ fun DashboardScreen(
             onItemSelected = { index ->
                 selectedIndex = index
                 when (index) {
-                    0 -> { /* Início - já na Dashboard */ }
+                    0 -> { /* Início - já na Dashboard */
+                    }
+
                     1 -> onVerTodasTransacoes()
                     2 -> onVerPendencias()   // ou onNavegarGastos se preferir
                     3 -> onNavegarEdicao()    // chama explicitamente o novo callback
@@ -453,7 +418,11 @@ private fun ConteudoDashboard(
                     Text(text = "💡", fontSize = 18.sp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Sua maior despesa foi ${maiorCategoria.nomeCategoria} com ${maiorCategoria.totalGasto.formatarMoeda(uiState.numerosVisiveis)}.",
+                        text = "Sua maior despesa foi ${maiorCategoria.nomeCategoria} com ${
+                            maiorCategoria.totalGasto.formatarMoeda(
+                                uiState.numerosVisiveis
+                            )
+                        }.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF136451),
                         fontWeight = FontWeight.Medium
@@ -519,7 +488,11 @@ fun EstruturaGastosCard(
         animationSpec = tween(durationMillis = 800)
     )
 
-    val usedFraction = if (totalBudget > 0L) (totalGasto.toFloat() / totalBudget.toFloat()).coerceIn(0f, 1f) else 0f
+    val usedFraction =
+        if (totalBudget > 0L) (totalGasto.toFloat() / totalBudget.toFloat()).coerceIn(
+            0f,
+            1f
+        ) else 0f
     val animatedUsed by animateFloatAsState(
         targetValue = if (animate) usedFraction else 0f,
         animationSpec = tween(durationMillis = 800)
@@ -538,7 +511,11 @@ fun EstruturaGastosCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "ESTRUTURA DE GASTOS · ${java.time.YearMonth.now().format(DateTimeFormatter.ofPattern("MMM", Locale("pt","BR"))).uppercase(Locale("pt","BR"))}",
+                    text = "ESTRUTURA DE GASTOS · ${
+                        java.time.YearMonth.now()
+                            .format(DateTimeFormatter.ofPattern("MMM", Locale("pt", "BR")))
+                            .uppercase(Locale("pt", "BR"))
+                    }",
                     style = MaterialTheme.typography.labelMedium,
                     color = Color(0xFF8A929B),
                     fontWeight = FontWeight.Bold,
@@ -548,7 +525,10 @@ fun EstruturaGastosCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Box(modifier = Modifier.size(150.dp)) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val thickness = 22.dp.toPx()
@@ -568,11 +548,14 @@ fun EstruturaGastosCard(
 
                             // 👇 USA O ID EM VEZ DO ÍNDICE PARA A COR SER SEMPRE A MESMA
                             val hue = ((gasto.categoriaId * 137.5f) % 360f).coerceIn(0f, 360f)
-                            val corCategoria = Color.hsl(hue = hue, saturation = 0.65f, lightness = 0.50f)
+                            val corCategoria =
+                                Color.hsl(hue = hue, saturation = 0.65f, lightness = 0.50f)
 
                             val sweep = if (totalCategorias > 0L) {
                                 (gasto.totalGasto.toFloat() / totalCategorias.toFloat() * 360f)
-                            } else { 0f }
+                            } else {
+                                0f
+                            }
 
                             if (sweep > 0f) {
                                 val gap = if (sweep > 4f) 4f else 0f
@@ -588,18 +571,36 @@ fun EstruturaGastosCard(
                         }
                     }
 
-                    Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "ESTE MÊS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "ESTE MÊS",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(text = totalGasto.formatarMoeda(numerosVisiveis), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = totalGasto.formatarMoeda(numerosVisiveis),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                         Spacer(modifier = Modifier.height(2.dp))
-                        Text(text = "de ${totalBudget.formatarMoeda(numerosVisiveis)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = "de ${totalBudget.formatarMoeda(numerosVisiveis)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.width(18.dp))
 
-                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(82.dp)) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             val stroke = 10.dp.toPx()
@@ -612,7 +613,8 @@ fun EstruturaGastosCard(
                             )
 
                             val percentualUsado = if (saldoDisponivel > 0L)
-                                (totalDividas.toFloat() / saldoDisponivel.toFloat() * 100f).toInt().coerceIn(0, 100)
+                                (totalDividas.toFloat() / saldoDisponivel.toFloat() * 100f).toInt()
+                                    .coerceIn(0, 100)
                             else 0
 
                             val sweep = 360f * (percentualUsado / 100f)
@@ -624,13 +626,26 @@ fun EstruturaGastosCard(
                                 style = Stroke(width = stroke, cap = StrokeCap.Round)
                             )
                         }
-                        Column(horizontalAlignment = Alignment.Start, modifier = Modifier.padding(start = 12.dp)) {
+                        Column(
+                            horizontalAlignment = Alignment.Start,
+                            modifier = Modifier.padding(start = 12.dp)
+                        ) {
                             val percentualUsado = if (saldoDisponivel > 0L)
-                                (totalDividas.toFloat() / saldoDisponivel.toFloat() * 100f).toInt().coerceIn(0, 100)
+                                (totalDividas.toFloat() / saldoDisponivel.toFloat() * 100f).toInt()
+                                    .coerceIn(0, 100)
                             else 0
 
-                            Text(text = "$percentualUsado%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF143045))
-                            Text(text = "usado", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                text = "$percentualUsado%",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF143045)
+                            )
+                            Text(
+                                text = "usado",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
 
@@ -638,10 +653,22 @@ fun EstruturaGastosCard(
 
                     val restante = (saldoDisponivel - totalDividas).coerceAtLeast(0L)
 
-                    Column(horizontalAlignment = Alignment.Start, modifier = Modifier.padding(start = 12.dp)) {
-                        Text(text = "ORÇAMENTO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(
+                        horizontalAlignment = Alignment.Start,
+                        modifier = Modifier.padding(start = 12.dp)
+                    ) {
+                        Text(
+                            text = "ORÇAMENTO",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(text = saldoDisponivel.formatarMoeda(numerosVisiveis), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFF143045))
+                        Text(
+                            text = saldoDisponivel.formatarMoeda(numerosVisiveis),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF143045)
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "de ${totalDividas.formatarMoeda(numerosVisiveis)} em despesas",
@@ -649,7 +676,12 @@ fun EstruturaGastosCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(text = restante.formatarMoeda(numerosVisiveis), style = MaterialTheme.typography.bodySmall, color = Color(0xFF1B6B4A), fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = restante.formatarMoeda(numerosVisiveis),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF1B6B4A),
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
@@ -660,7 +692,8 @@ fun EstruturaGastosCard(
                 val totalForBars = if (totalCategorias > 0L) totalCategorias.toFloat() else 1f
 
                 gastosPorCategoria.forEachIndexed { idx, gasto ->
-                    val fraction = if (totalForBars > 0f) gasto.totalGasto.toFloat() / totalForBars else 0f
+                    val fraction =
+                        if (totalForBars > 0f) gasto.totalGasto.toFloat() / totalForBars else 0f
 
                     // MESMA COR CALCULADA POR HUE PARA A BARRA E ÍCONE
                     val hue = ((gasto.categoriaId * 137.5f) % 360f).coerceIn(0f, 360f)
@@ -673,31 +706,53 @@ fun EstruturaGastosCard(
 
                     val displayPercent = adjustedPercents.getOrNull(idx) ?: 0
 
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         IconeCategoriaDinamico(iconeChave = gasto.iconeChave, cor = corCategoria)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                Text(text = gasto.nomeCategoria, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = gasto.nomeCategoria,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1
+                                )
                                 Spacer(modifier = Modifier.weight(1f))
-                                Text(text = gasto.totalGasto.formatarMoeda(numerosVisiveis), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    text = gasto.totalGasto.formatarMoeda(numerosVisiveis),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(text = "($displayPercent%)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = "($displayPercent%)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                            ) {
-                                Box(modifier = Modifier
-                                    .fillMaxWidth(animatedFraction)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
                                     .height(8.dp)
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(corCategoria)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(animatedFraction)
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(corCategoria)
                                 )
                             }
                         }
@@ -717,7 +772,11 @@ private fun IconeCategoriaDinamico(
     val chave = iconeChave ?: ""
     val context = LocalContext.current
     val resId = remember(chave) {
-        if (chave.isBlank()) 0 else context.resources.getIdentifier(chave, "drawable", context.packageName)
+        if (chave.isBlank()) 0 else context.resources.getIdentifier(
+            chave,
+            "drawable",
+            context.packageName
+        )
     }
 
     if (resId != 0) {
@@ -808,7 +867,9 @@ private fun FaturasProximas(
             )
         }
 
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Column(modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)) {
             ativos.forEach { cartao ->
                 val (daysUntil, _) = calcularProximoVencimento(cartao.diaVencimento)
                 val estaEmBreve = daysUntil <= diasAvisoEmBreve
@@ -839,9 +900,13 @@ private fun FaturasProximas(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         val context = LocalContext.current
-                        val marcaKey = cartao.marcaChave.orEmpty().lowercase(Locale("pt","BR"))
+                        val marcaKey = cartao.marcaChave.orEmpty().lowercase(Locale("pt", "BR"))
                         val resId = remember(marcaKey) {
-                            if (marcaKey.isBlank()) 0 else context.resources.getIdentifier(marcaKey, "drawable", context.packageName)
+                            if (marcaKey.isBlank()) 0 else context.resources.getIdentifier(
+                                marcaKey,
+                                "drawable",
+                                context.packageName
+                            )
                         }
 
                         if (resId != 0) {
@@ -867,8 +932,14 @@ private fun FaturasProximas(
                                 Color(parsed)
                             } catch (_: Exception) {
                                 when {
-                                    cartao.nome.contains("C6", ignoreCase = true) -> Color(0xFF263238)
-                                    cartao.nome.contains("Nu", ignoreCase = true) -> Color(0xFF8B3DFF)
+                                    cartao.nome.contains("C6", ignoreCase = true) -> Color(
+                                        0xFF263238
+                                    )
+
+                                    cartao.nome.contains("Nu", ignoreCase = true) -> Color(
+                                        0xFF8B3DFF
+                                    )
+
                                     else -> Color(0xFF5F8D84)
                                 }
                             }
@@ -881,8 +952,10 @@ private fun FaturasProximas(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = cartao.marcaChave.takeIf { it.isNotBlank() }?.uppercase()?.take(2)
-                                        ?: cartao.nome.firstOrNull()?.uppercase()?.toString() ?: "?",
+                                    text = cartao.marcaChave.takeIf { it.isNotBlank() }?.uppercase()
+                                        ?.take(2)
+                                        ?: cartao.nome.firstOrNull()?.uppercase()?.toString()
+                                        ?: "?",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
                                     color = Color.White
@@ -939,6 +1012,7 @@ private fun FaturasProximas(
         }
     }
 }
+
 // Helper: calcula (daysUntil, dueDate)
 private fun calcularProximoVencimento(diaVencimento: Int): Pair<Int, LocalDate> {
     val hoje = LocalDate.now()
@@ -1015,7 +1089,10 @@ private fun PainelTransacoes(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 16.dp), // Espaçamento vertical igual ao alvo
+                                .padding(
+                                    horizontal = 16.dp,
+                                    vertical = 16.dp
+                                ), // Espaçamento vertical igual ao alvo
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // ícone categoria
@@ -1056,9 +1133,14 @@ private fun PainelTransacoes(
                                     val cartao = cartoes.firstOrNull { it.id == desp.cartaoId }
                                     if (cartao != null) {
                                         val context = LocalContext.current
-                                        val marcaChaveLower = cartao.marcaChave.orEmpty().lowercase(Locale("pt", "BR"))
+                                        val marcaChaveLower = cartao.marcaChave.orEmpty()
+                                            .lowercase(Locale("pt", "BR"))
                                         val resIdCard = remember(marcaChaveLower) {
-                                            if (marcaChaveLower.isBlank()) 0 else context.resources.getIdentifier(marcaChaveLower, "drawable", context.packageName)
+                                            if (marcaChaveLower.isBlank()) 0 else context.resources.getIdentifier(
+                                                marcaChaveLower,
+                                                "drawable",
+                                                context.packageName
+                                            )
                                         }
                                         if (resIdCard != 0) {
                                             // Carrega a imagem real se existir
@@ -1071,7 +1153,8 @@ private fun PainelTransacoes(
                                             )
                                         } else {
                                             // Fallback para a bolinha com a letra (estilo imagem 1)
-                                            val initial = cartao.nome.firstOrNull()?.uppercase() ?: "C"
+                                            val initial =
+                                                cartao.nome.firstOrNull()?.uppercase() ?: "C"
                                             val corBadge = when (initial) {
                                                 "N" -> Color(0xFF6A1B9A)
                                                 "I" -> Color(0xFFEF6C00)
@@ -1100,7 +1183,12 @@ private fun PainelTransacoes(
                                     val dataCurta = try {
                                         Instant.ofEpochMilli(desp.dataCompra)
                                             .atZone(ZoneOffset.UTC)
-                                            .format(DateTimeFormatter.ofPattern("d/MMM", Locale("pt", "BR")))
+                                            .format(
+                                                DateTimeFormatter.ofPattern(
+                                                    "d/MMM",
+                                                    Locale("pt", "BR")
+                                                )
+                                            )
                                             .lowercase(Locale("pt", "BR"))
                                             .replace(".", "") // REMOVE O PONTO (ex: set. vira set)
                                     } catch (_: Exception) {
@@ -1169,7 +1257,11 @@ private fun IconeCategoriaPill(
     val chave = iconeChave ?: ""
     val context = LocalContext.current
     val resId = remember(chave) {
-        if (chave.isBlank()) 0 else context.resources.getIdentifier(chave, "drawable", context.packageName)
+        if (chave.isBlank()) 0 else context.resources.getIdentifier(
+            chave,
+            "drawable",
+            context.packageName
+        )
     }
 
     val cor = try {
@@ -1278,14 +1370,20 @@ private fun iconeCategoria(chave: String): ImageVector = when (chave) {
 
 @Composable
 private fun EstadoVazio(titulo: String, descricao: String) {
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    Card(modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp)) {
         Column(
             modifier = Modifier.padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(titulo, style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(6.dp))
-            Text(descricao, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                descricao,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
