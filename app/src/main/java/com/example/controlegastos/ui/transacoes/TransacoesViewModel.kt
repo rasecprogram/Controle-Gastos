@@ -146,6 +146,15 @@ class TransacoesViewModel @Inject constructor(
             despesa.cartaoId == null &&
                     despesa.tipoLancamento != TipoLancamento.FIXA
         }
+        val despesasDoMesTotal = dados.despesasMesCompra
+            .asSequence()
+            .filter { despesa ->
+                despesa.cartaoId != null ||
+                        despesa.tipoLancamento == TipoLancamento.FIXA
+            }
+            .sumOf { despesa ->
+                despesa.valor
+            }
 
         val despesasFixas = dados.despesasMesCompra.filter { despesa ->
             despesa.tipoLancamento == TipoLancamento.FIXA
@@ -235,6 +244,7 @@ class TransacoesViewModel @Inject constructor(
             cartoesExpandidos = filtros.cartoesExpandidos,
             saldoInicialTotal = saldoInicialTotal,
             despesasAvulsasTotal = despesasAvulsasTotal,
+            despesasDoMesTotal = despesasDoMesTotal,
             saldoAtualTotal = saldoInicialTotal - despesasAvulsasTotal,
             contas = contasAtivas,
             faturasAbertas = faturasAbertas,

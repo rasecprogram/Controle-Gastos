@@ -13,6 +13,7 @@ data class TransacoesUiState(
     val cartoesExpandidos: Set<Int> = emptySet(),
     val saldoInicialTotal: Long = 0L,
     val despesasAvulsasTotal: Long = 0L,
+    val despesasDoMesTotal: Long = 0L,
     val saldoAtualTotal: Long = 0L,
     val contas: List<ContaSaldo> = emptyList(),
     val faturasAbertas: List<FaturaCartao> = emptyList(),

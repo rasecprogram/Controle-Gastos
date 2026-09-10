@@ -202,7 +202,7 @@ fun TransacoesScreen(
                     CardSaldoPrincipal(
                         saldoAtual = uiState.saldoAtualTotal,
                         saldoInicial = uiState.saldoInicialTotal,
-                        despesas = uiState.despesasAvulsasTotal,
+                        despesas = uiState.despesasDoMesTotal,
                         visivel = uiState.valoresVisiveis
                     )
                 }
