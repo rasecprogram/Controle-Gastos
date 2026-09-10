@@ -371,13 +371,22 @@ private fun ConteudoDashboard(
     modifier: Modifier,
     uiState: DashboardUiState
 ) {
-    val tetoSoma: Long = uiState.gastosPorCategoria.mapNotNull { it.tetoMensal }.sum()
+    val tetoSoma: Long = uiState.gastosPorCategoria
+        .mapNotNull { it.tetoMensal }
+        .sum()
 
     val totalBudget: Long = when {
         tetoSoma > 0L -> tetoSoma
-        uiState.resumoMensal.totalGasto > 0L -> uiState.resumoMensal.totalGasto * 2L
+        uiState.resumoMensal.totalGasto > 0L -> {
+            uiState.resumoMensal.totalGasto * 2L
+        }
         else -> 0L
     }
+
+    val maiorDespesa = uiState.transacoesDoMes
+        .maxByOrNull { despesa ->
+            despesa.valor
+        }
 
     Column(
         modifier = modifier,
@@ -389,40 +398,54 @@ private fun ConteudoDashboard(
             totalBudget = totalBudget,
             numerosVisiveis = uiState.numerosVisiveis,
             saldoDisponivel = uiState.totalSaldo,
-            totalDividas = uiState.totalDespesas,
+            gastoDoMes = uiState.resumoMensal.totalGasto,
             modifier = Modifier.fillMaxWidth()
         )
 
-        // ---------- DESTAQUE FORA DO CARD PRINCIPAL ----------
-        val maiorCategoria = uiState.gastosPorCategoria.maxByOrNull { it.totalGasto }
-        if (maiorCategoria != null) {
+        if (maiorDespesa != null) {
             Spacer(modifier = Modifier.height(8.dp))
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(
                         width = 1.dp,
-                        color = Color(0xFFCCE9DE), // cor da borda — ajuste para ficar mais forte se necessário
+                        color = Color(0xFFCCE9DE),
                         shape = RoundedCornerShape(10.dp)
                     ),
                 shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFEEF8F3)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFEEF8F3)
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 0.dp
+                )
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 14.dp),
+                        .padding(
+                            horizontal = 12.dp,
+                            vertical = 14.dp
+                        ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "💡", fontSize = 18.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Sua maior despesa foi ${maiorCategoria.nomeCategoria} com ${
-                            maiorCategoria.totalGasto.formatarMoeda(
-                                uiState.numerosVisiveis
-                            )
-                        }.",
+                        text = "💡",
+                        fontSize = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = "Sua maior despesa foi na categoria " +
+                                "${maiorDespesa.categoriaNome} " +
+                                "com a compra ${maiorDespesa.descricao} " +
+                                "no valor de ${
+                                    maiorDespesa.valor.formatarMoeda(
+                                        uiState.numerosVisiveis
+                                    )
+                                }.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF136451),
                         fontWeight = FontWeight.Medium
@@ -455,7 +478,7 @@ fun EstruturaGastosCard(
     numerosVisiveis: Boolean,
     modifier: Modifier = Modifier,
     saldoDisponivel: Long = 0L,
-    totalDividas: Long = 0L
+    gastoDoMes: Long = 0L
 ) {
     var animate by remember { mutableStateOf(false) }
     LaunchedEffect(gastosPorCategoria, totalGasto, totalBudget) {
@@ -497,6 +520,26 @@ fun EstruturaGastosCard(
         targetValue = if (animate) usedFraction else 0f,
         animationSpec = tween(durationMillis = 800)
     )
+
+    val percentualUsado = if (saldoDisponivel > 0L) {
+        (
+                gastoDoMes.toDouble() /
+                        saldoDisponivel.toDouble() *
+                        100.0
+                ).toInt()
+    } else {
+        0
+    }
+
+    val percentualParaGrafico = percentualUsado.coerceIn(0, 100)
+
+    val saldoRestante = saldoDisponivel - gastoDoMes
+
+    val corIndicadorOrcamento = if (saldoRestante < 0L) {
+        Color(0xFFE05252)
+    } else {
+        Color(0xFF31B86A)
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -580,17 +623,13 @@ fun EstruturaGastosCard(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
                         Spacer(modifier = Modifier.height(6.dp))
+
                         Text(
                             text = totalGasto.formatarMoeda(numerosVisiveis),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "de ${totalBudget.formatarMoeda(numerosVisiveis)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -612,35 +651,31 @@ fun EstruturaGastosCard(
                                 style = Stroke(width = stroke, cap = StrokeCap.Round)
                             )
 
-                            val percentualUsado = if (saldoDisponivel > 0L)
-                                (totalDividas.toFloat() / saldoDisponivel.toFloat() * 100f).toInt()
-                                    .coerceIn(0, 100)
-                            else 0
+                            val sweep = 360f * (percentualParaGrafico / 100f)
 
-                            val sweep = 360f * (percentualUsado / 100f)
                             drawArc(
-                                color = Color(0xFF1B6B4A),
+                                color = corIndicadorOrcamento,
                                 startAngle = -90f,
                                 sweepAngle = sweep,
                                 useCenter = false,
-                                style = Stroke(width = stroke, cap = StrokeCap.Round)
+                                style = Stroke(
+                                    width = stroke,
+                                    cap = StrokeCap.Round
+                                )
                             )
                         }
                         Column(
-                            horizontalAlignment = Alignment.Start,
-                            modifier = Modifier.padding(start = 12.dp)
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            val percentualUsado = if (saldoDisponivel > 0L)
-                                (totalDividas.toFloat() / saldoDisponivel.toFloat() * 100f).toInt()
-                                    .coerceIn(0, 100)
-                            else 0
-
                             Text(
                                 text = "$percentualUsado%",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF143045)
                             )
+
                             Text(
                                 text = "usado",
                                 style = MaterialTheme.typography.labelSmall,
@@ -651,36 +686,24 @@ fun EstruturaGastosCard(
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    val restante = (saldoDisponivel - totalDividas).coerceAtLeast(0L)
 
                     Column(
                         horizontalAlignment = Alignment.Start,
                         modifier = Modifier.padding(start = 12.dp)
                     ) {
                         Text(
-                            text = "ORÇAMENTO",
+                            text = "ORÇAMENTO RESTANTE",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
                         Spacer(modifier = Modifier.height(6.dp))
+
                         Text(
-                            text = saldoDisponivel.formatarMoeda(numerosVisiveis),
+                            text = saldoRestante.formatarMoeda(numerosVisiveis),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF143045)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "de ${totalDividas.formatarMoeda(numerosVisiveis)} em despesas",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = restante.formatarMoeda(numerosVisiveis),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF1B6B4A),
-                            fontWeight = FontWeight.SemiBold
+                            color = corIndicadorOrcamento
                         )
                     }
                 }
