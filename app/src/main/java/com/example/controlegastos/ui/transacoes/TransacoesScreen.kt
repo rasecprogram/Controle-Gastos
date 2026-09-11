@@ -91,6 +91,9 @@ import java.time.YearMonth
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.text.style.TextAlign
 
 
 private val CorFundoApp = Color(0xFFECF0ED)
@@ -253,7 +256,9 @@ fun TransacoesScreen(
                             )
 
                             Text(
-                                text = totalContas.formatarMoeda(true),
+                                text = totalContas.formatarMoeda(
+                                    uiState.valoresVisiveis
+                                ),
                                 color = Color(0xFF0F5A4A),
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     fontSize = 15.sp
@@ -1109,7 +1114,11 @@ private fun CardFaturaCompleta(
                                 Icon(
                                     painter = painterResource(id = logoRes),
                                     contentDescription = cartao.nome,
-                                    tint = Color.Unspecified,
+                                    tint = if (ehPicPay(cartao)) {
+                                        Color(0xFF04C563)
+                                    } else {
+                                        Color.Unspecified
+                                    },
                                     modifier = Modifier.size(24.dp)
                                 )
                             } else {
@@ -1257,7 +1266,11 @@ private fun CardFaturaCompleta(
                                 Icon(
                                     painter = painterResource(id = logoRes),
                                     contentDescription = cartao.nome,
-                                    tint = Color.Unspecified,
+                                    tint = if (ehPicPay(cartao)) {
+                                        Color(0xFF04C563)
+                                    } else {
+                                        Color.Unspecified
+                                    },
                                     modifier = Modifier.size(28.dp)
                                 )
                             } else {
@@ -1284,26 +1297,7 @@ private fun CardFaturaCompleta(
                                     style = MaterialTheme.typography.bodyLarge
                                 )
 
-                                Spacer(Modifier.width(8.dp))
 
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = Color(0xFFFFFBEB),
-                                    border = BorderStroke(
-                                        1.dp,
-                                        Color(0xFFFDE68A)
-                                    )
-                                ) {
-                                    Text(
-                                        text = "Pendente",
-                                        modifier = Modifier.padding(
-                                            horizontal = 8.dp,
-                                            vertical = 6.dp
-                                        ),
-                                        color = Color(0xFFD97706),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
                             }
 
                             Spacer(modifier = Modifier.height(6.dp))
@@ -1324,26 +1318,64 @@ private fun CardFaturaCompleta(
                             }
                         }
 
-                        Column(
-                            horizontalAlignment = Alignment.End,
-                            verticalArrangement = Arrangement.Top,
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.End,
                             modifier = Modifier.padding(start = 8.dp)
                         ) {
-                            Text(
-                                text = fatura.totalCentavos.formatarMoeda(visivel),
-                                color = CorTexto,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
+                            Surface(
+                                modifier = Modifier
+                                    .width(72.dp)
+                                    .height(28.dp)
+                                    .padding(top = 1.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFFFFFBEB),
+                                border = BorderStroke(
+                                    width = 1.dp,
+                                    color = Color(0xFFFDE68A)
+                                )
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Pendente",
+                                        color = Color(0xFFD97706),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
 
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                            Text(
-                                text = "de ${limite.formatarMoeda(true)}",
-                                color = Color(0xFF9CA3AF),
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text(
+                                    text = fatura.totalCentavos.formatarMoeda(visivel),
+                                    color = CorTexto,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 1
+                                )
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Text(
+                                    text = "de ${limite.formatarMoeda(visivel)}",
+                                    color = Color(0xFF9CA3AF),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1
+                                )
+                            }
                         }
+                        
                     }
 
                     Spacer(Modifier.height(12.dp))
@@ -2551,6 +2583,17 @@ private fun String.toColor(): Color = try {
     Color(0xFF5F8D84) // fallback
 }
 
+private fun ehPicPay(
+    cartao: com.example.controlegastos.domain.model.Cartao
+): Boolean {
+    return cartao.nome.contains(
+        "PicPay",
+        ignoreCase = true
+    ) || cartao.marcaChave.contains(
+        "picpay",
+        ignoreCase = true
+    )
+}
 private fun formatarVencimentoFatura(
     fatura: FaturaCartao
 ): String {

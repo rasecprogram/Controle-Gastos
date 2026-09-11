@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,18 +16,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Celebration
@@ -36,26 +43,28 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Toll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -66,10 +75,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,13 +86,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
@@ -107,37 +117,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.window.Popup
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.Divider
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.outlined.Autorenew
-import androidx.compose.material.icons.automirrored.outlined.List
-import androidx.compose.material.icons.outlined.Toll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.foundation.shape.CircleShape
 
 @Composable
 fun InserirDespesaScreen(
@@ -147,6 +126,14 @@ fun InserirDespesaScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    fun limparFocoDoCampo() {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+    }
+
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -241,6 +228,7 @@ fun InserirDespesaScreen(
             onQuantidadeParcelasAlterada = viewModel::atualizarQuantidadeParcelas,
             onSalvar = viewModel::salvarDespesa,
             onTipoLancamentoAlterado = viewModel::alterarTipoLancamento,
+            onInteracaoForaDoCampo = ::limparFocoDoCampo,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -255,6 +243,7 @@ private fun FormularioDespesa(
     onCategoriaSelecionada: (Int) -> Unit,
     onFormaPagamentoSelecionada: (Int?) -> Unit,
     onDataSelecionada: (LocalDate) -> Unit,
+    onInteracaoForaDoCampo: () -> Unit,
     onQuantidadeParcelasAlterada: (String) -> Unit,
     onTipoLancamentoAlterado: (TipoLancamento) -> Unit,
     onSalvar: () -> Unit,
@@ -288,7 +277,10 @@ private fun FormularioDespesa(
                 descricao = uiState.descricao,
                 onDescricaoAlterada = onDescricaoAlterada,
                 dataSelecionada = uiState.dataCompra,
-                onDataSelecionada = onDataSelecionada,
+                onDataSelecionada = {
+                    onInteracaoForaDoCampo()
+                    onDataSelecionada(it)
+                },
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -304,7 +296,10 @@ private fun FormularioDespesa(
 
                 SeletorCategoria(
                     uiState = uiState,
-                    onCategoriaSelecionada = onCategoriaSelecionada
+                    onCategoriaSelecionada = {
+                        onInteracaoForaDoCampo()
+                        onCategoriaSelecionada(it)
+                    }
                 )
             }
         }
@@ -323,14 +318,20 @@ private fun FormularioDespesa(
 
                 SeletorFormaPagamento(
                     uiState = uiState,
-                    onFormaPagamentoSelecionada = onFormaPagamentoSelecionada
+                    onFormaPagamentoSelecionada = {
+                        onInteracaoForaDoCampo()
+                        onFormaPagamentoSelecionada(it)
+                    }
                 )
             }
         }
         item {
             TipoLancamentoSelector(
                 tipoSelecionado = uiState.tipoLancamento,
-                onTipoSelecionado = onTipoLancamentoAlterado,
+                onTipoSelecionado = {
+                    onInteracaoForaDoCampo()
+                    onTipoLancamentoAlterado(it)
+                },
                 valorCentavos = valorCentavos,
                 quantidadeParcelas = qtdParcelas,
                 onQuantidadeParcelasAlterada = onQuantidadeParcelasAlterada,
@@ -520,6 +521,13 @@ private fun ValorCard(
                         val resId = remember(cartaoMarcaChave) {
                             obterResourceIconeCartao(cartaoMarcaChave.orEmpty())
                         }
+                        val ehPicPay = cartaoNome?.contains(
+                            "PicPay",
+                            ignoreCase = true
+                        ) == true || cartaoMarcaChave?.contains(
+                            "picpay",
+                            ignoreCase = true
+                        ) == true
 
                         Surface(
                             color = Color.White.copy(alpha = 0.15f),
@@ -536,6 +544,13 @@ private fun ValorCard(
                                     Image(
                                         painter = painterResource(id = resId),
                                         contentDescription = nome,
+                                        colorFilter = if (ehPicPay) {
+                                            androidx.compose.ui.graphics.ColorFilter.tint(
+                                                Color(0xFF04C563)
+                                            )
+                                        } else {
+                                            null
+                                        },
                                         modifier = Modifier.size(18.dp)
                                     )
                                 } else {
@@ -543,7 +558,13 @@ private fun ValorCard(
                                         modifier = Modifier
                                             .size(10.dp)
                                             .clip(CircleShape)
-                                            .background(Color(0xFFFF5722))
+                                            .background(
+                                                if (ehPicPay) {
+                                                    Color(0xFF04C563)
+                                                } else {
+                                                    Color(0xFFFF5722)
+                                                }
+                                            )
                                     )
                                 }
 
@@ -863,17 +884,25 @@ private fun SeletorFormaPagamento(
         }
 
         if (resId != 0) {
+            val ehPicPay = nome.contains(
+                "PicPay",
+                ignoreCase = true
+            ) || chave.contains(
+                "picpay",
+                ignoreCase = true
+            )
+
             Image(
                 painter = painterResource(id = resId),
                 contentDescription = nome,
+                colorFilter = if (ehPicPay) {
+                    androidx.compose.ui.graphics.ColorFilter.tint(
+                        Color(0xFF04C563)
+                    )
+                } else {
+                    null
+                },
                 modifier = Modifier.size(24.dp)
-            )
-        } else {
-            Text(
-                text = nome.take(2).uppercase(),
-                color = Color(0xFF6B7280),
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
             )
         }
     }
@@ -1828,8 +1857,13 @@ private fun formatarCentavosParaMoeda(centavos: Long): String {
 private fun String.formatarMoedaComCursor(): String {
     val valorCentavos = toLongOrNull() ?: 0L
 
-    return "R$ %d,%02d".format(
-        valorCentavos / 100,
-        valorCentavos % 100
-    )
+    val formatter = java.text.NumberFormat
+        .getNumberInstance(java.util.Locale("pt", "BR"))
+        .apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+            isGroupingUsed = true
+        }
+
+    return "R$ ${formatter.format(valorCentavos / 100.0)}"
 }

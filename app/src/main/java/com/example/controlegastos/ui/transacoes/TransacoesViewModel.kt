@@ -191,9 +191,25 @@ class TransacoesViewModel @Inject constructor(
                 despesa.valor
             }
 
-        val despesasFixas = dados.despesasMesCompra.filter { despesa ->
-            despesa.tipoLancamento == TipoLancamento.FIXA
-        }
+        val despesasFixas = dados.despesasFaturas
+            .asSequence()
+            .filter { despesa ->
+                despesa.tipoLancamento == TipoLancamento.FIXA
+            }
+            .groupBy { despesa ->
+                despesa.descricao
+                    .trim()
+                    .lowercase()
+            }
+            .map { (_, ocorrencias) ->
+                ocorrencias.minByOrNull { despesa ->
+                    despesa.dataCompra
+                }!!
+            }
+            .sortedBy { despesa ->
+                despesa.descricao.lowercase()
+            }
+            .toList()
 
         val saldoInicialTotal = contasAtivas.sumOf { conta ->
             conta.saldoCentavos
@@ -268,7 +284,6 @@ class TransacoesViewModel @Inject constructor(
                     .asSequence()
                     .filter { despesa ->
                         despesa.cartaoId == cartao.id &&
-                                despesa.tipoLancamento != TipoLancamento.FIXA &&
                                 despesa.dataCompra >= inicioCicloMillis &&
                                 despesa.dataCompra < fimExclusivoCicloMillis
                     }

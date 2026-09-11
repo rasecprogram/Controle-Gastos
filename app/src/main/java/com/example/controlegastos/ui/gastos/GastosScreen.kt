@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -93,6 +94,7 @@ import com.example.controlegastos.domain.model.DespesaDetalhada
 import com.example.controlegastos.domain.model.GastoMensal
 import com.example.controlegastos.ui.components.BarraNavegacaoInferior
 import java.time.Instant
+import java.time.YearMonth
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -797,14 +799,31 @@ private fun LancamentoItem(
                             modifier = Modifier.padding(start = 6.dp)
                         ) {
                             if (resIdCard != 0) {
+                                val ehPicPay = cartao.nome.contains(
+                                    "PicPay",
+                                    ignoreCase = true
+                                ) || marcaChaveLower.contains(
+                                    "picpay",
+                                    ignoreCase = true
+                                )
+
                                 Image(
                                     painter = painterResource(id = resIdCard),
                                     contentDescription = cartao.nome,
+                                    colorFilter = if (ehPicPay) {
+                                        androidx.compose.ui.graphics.ColorFilter.tint(
+                                            Color(0xFF04C563)
+                                        )
+                                    } else {
+                                        null
+                                    },
                                     modifier = Modifier
                                         .size(20.dp)
                                         .clip(RoundedCornerShape(6.dp))
                                 )
+
                                 Spacer(modifier = Modifier.width(8.dp))
+
                                 Text(
                                     text = cartao.nome,
                                     color = Color(0xFF123C3A),
@@ -813,18 +832,42 @@ private fun LancamentoItem(
                                     maxLines = 1
                                 )
                             } else {
+                                val ehPicPay = cartao.nome.contains(
+                                    "PicPay",
+                                    ignoreCase = true
+                                ) || marcaChaveLower.contains(
+                                    "picpay",
+                                    ignoreCase = true
+                                )
+
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(Color(0xFFECEFF0))
+                                        .background(
+                                            if (ehPicPay) {
+                                                Color(0xFF04C563).copy(alpha = 0.12f)
+                                            } else {
+                                                Color(0xFFECEFF0)
+                                            }
+                                        )
                                         .padding(horizontal = 6.dp, vertical = 2.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = cartao.marcaChave.takeIf { it.isNotBlank() }?.let {
-                                            it.uppercase().take(2)
-                                        } ?: cartao.nome.firstOrNull()?.toString() ?: "",
-                                        color = Color(0xFF123C3A),
+                                        text = cartao.marcaChave
+                                            .takeIf { it.isNotBlank() }
+                                            ?.uppercase()
+                                            ?.take(2)
+                                            ?: cartao.nome
+                                                .firstOrNull()
+                                                ?.uppercase()
+                                                ?.toString()
+                                            ?: "",
+                                        color = if (ehPicPay) {
+                                            Color(0xFF04C563)
+                                        } else {
+                                            Color(0xFF123C3A)
+                                        },
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -978,8 +1021,8 @@ private fun iconeCategoria(chave: String): ImageVector = when (chave) {
 @Composable
 private fun GraficoBarrasMensal(
     gastosMensais: List<GastoMensal>,
-    mesSelecionado: java.time.YearMonth,
-    onSelecionarMes: (java.time.YearMonth) -> Unit
+    mesSelecionado: YearMonth,
+    onSelecionarMes: (YearMonth) -> Unit
 ) {
     val estadoLista = rememberLazyListState()
 
@@ -1004,13 +1047,20 @@ private fun GraficoBarrasMensal(
         maiorGasto
     )
 
+    val alturaMaximaBarra = 136.dp
+
     LazyRow(
         state = estadoLista,
         modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp),
-        contentPadding = PaddingValues(horizontal = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .height(230.dp),
+        contentPadding = PaddingValues(
+            start = 12.dp,
+            end = 12.dp,
+            top = 8.dp,
+            bottom = 8.dp
+        ),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Bottom
     ) {
         items(
@@ -1026,39 +1076,56 @@ private fun GraficoBarrasMensal(
                 0.06f
             }
 
-            val alturaBase = 30f + proporcao * 125f
             val alturaBarra = (
-                    alturaBase + if (selecionado) 10f else 0f
-                    ).dp
+                    proporcao * alturaMaximaBarra.value
+                    ).dp.coerceIn(
+                    minimumValue = 24.dp,
+                    maximumValue = alturaMaximaBarra
+                )
 
-            val formatoBarra = MaterialTheme.shapes.medium
+            val formatoBarra = RoundedCornerShape(
+                topStart = 18.dp,
+                topEnd = 18.dp,
+                bottomStart = 18.dp,
+                bottomEnd = 18.dp
+            )
 
             Column(
                 modifier = Modifier
-                    .width(62.dp)
+                    .width(68.dp)
+                    .height(204.dp)
                     .clickable {
                         onSelecionarMes(gasto.mesAno)
                     },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Bottom
             ) {
-                // Texto superior (Valor ou indicação de toque) -> Cinza bem claro (ou CorGastos se selecionado)
-                Text(
-                    text = gasto.totalCentavos.formatarMoeda(),
-                    color = if (selecionado) {
-                        CorGastos
-                    } else {
-                        Color(0xFFB0BEC5) // Cinza bem claro para os não selecionados
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = if (selecionado) {
-                        FontWeight.Bold
-                    } else {
-                        FontWeight.Normal
-                    },
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(30.dp),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    Text(
+                        text = gasto.totalCentavos.formatarMoeda(),
+                        color = if (selecionado) {
+                            CorGastos
+                        } else {
+                            Color(0xFFB0BEC5)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = if (selecionado) {
+                            FontWeight.Bold
+                        } else {
+                            FontWeight.Normal
+                        },
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(6.dp))
 
@@ -1098,24 +1165,36 @@ private fun GraficoBarrasMensal(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Texto inferior (Mês/Ano) -> Cor cinza padrão (ou CorTextoGastos se preferir destacar mais o selecionado)
-                Text(
-                    text = gasto.mesAno.formatarRotuloGrafico(),
-                    color = if (selecionado) CorTextoGastos else Color(0xFF78909C), // Cinza padrão
-                    fontWeight = if (selecionado) {
-                        FontWeight.Bold
-                    } else {
-                        FontWeight.Medium
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Text(
+                        text = gasto.mesAno.formatarRotuloGrafico(),
+                        color = if (selecionado) {
+                            CorTextoGastos
+                        } else {
+                            Color(0xFF78909C)
+                        },
+                        fontWeight = if (selecionado) {
+                            FontWeight.Bold
+                        } else {
+                            FontWeight.Medium
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     }
 }
-
 @Composable
 private fun ResumoMesSelecionado(
     mesSelecionado: java.time.YearMonth,

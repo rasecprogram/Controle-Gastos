@@ -70,8 +70,15 @@ data class TransacoesUiState(
     val faturasFechadas: List<FaturaCartao> = emptyList(),
 
     /*
-     * Despesas recorrentes/fixas do mês selecionado.
-     */
+  * Lista informativa de despesas recorrentes/fixas ativas.
+  *
+  * Inclui despesas recorrentes vinculadas a cartões e despesas
+  * recorrentes sem cartão vinculado.
+  *
+  * A lista é apenas para consulta. O pagamento continua ocorrendo:
+  * - pela fatura, quando houver cartão vinculado;
+  * - pelo fluxo PIX/conta, quando não houver cartão.
+  */
     val despesasFixas: List<DespesaDetalhada> = emptyList(),
 
     val mensagemSucesso: String? = null,
