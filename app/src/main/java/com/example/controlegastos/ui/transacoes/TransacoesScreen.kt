@@ -1162,7 +1162,7 @@ private fun CardFaturaCompleta(
 
                             Text(
                                 text = "Fatura cartão: ${
-                                    fatura.mesAno.format(
+                                    fatura.dataVencimento.format(
                                         DateTimeFormatter.ofPattern(
                                             "MMMM yyyy",
                                             Locale("pt", "BR")
@@ -1175,11 +1175,7 @@ private fun CardFaturaCompleta(
 
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            val diaVenc = cartao.diaVencimento.coerceAtMost(
-                                fatura.mesAno.lengthOfMonth()
-                            )
-
-                            val vencimentoData = fatura.mesAno.atDay(diaVenc)
+                            val vencimentoData = fatura.dataVencimento
 
                             Text(
                                 text = "Venceu: ${
@@ -1320,14 +1316,7 @@ private fun CardFaturaCompleta(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
-                                        text = "Vence ${cartao.diaVencimento} de ${
-                                            fatura.mesAno.format(
-                                                DateTimeFormatter.ofPattern(
-                                                    "MMM",
-                                                    Locale("pt", "BR")
-                                                )
-                                            ).lowercase()
-                                        }",
+                                        text = formatarVencimentoFatura(fatura),
                                         color = Color(0xFF9CA3AF),
                                         style = MaterialTheme.typography.bodySmall
                                     )
@@ -1781,16 +1770,7 @@ private fun DialogoPagamento(
 
     val context = LocalContext.current
 
-    val vencimentoData = remember(
-        fatura.mesAno,
-        fatura.cartao.diaVencimento
-    ) {
-        val dia = fatura.cartao.diaVencimento.coerceAtMost(
-            fatura.mesAno.lengthOfMonth()
-        )
-
-        fatura.mesAno.atDay(dia)
-    }
+    val vencimentoData = fatura.dataVencimento
 
     val formatterData = remember {
         DateTimeFormatter.ofPattern(
@@ -2569,6 +2549,24 @@ private fun String.toColor(): Color = try {
     Color(android.graphics.Color.parseColor(this))
 } catch (_: IllegalArgumentException) {
     Color(0xFF5F8D84) // fallback
+}
+
+private fun formatarVencimentoFatura(
+    fatura: FaturaCartao
+): String {
+    val data = fatura.dataVencimento
+
+    val mes = data
+        .format(
+            DateTimeFormatter.ofPattern(
+                "MMM",
+                Locale("pt", "BR")
+            )
+        )
+        .replace(".", "")
+        .lowercase(Locale("pt", "BR"))
+
+    return "Vence ${data.dayOfMonth} de $mes."
 }
 
 private fun YearMonth.formatarMes(): String {
