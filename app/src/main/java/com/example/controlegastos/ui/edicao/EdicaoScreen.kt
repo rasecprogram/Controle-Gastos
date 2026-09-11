@@ -9,6 +9,7 @@ package com.example.controlegastos.ui.edicao
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -59,6 +60,7 @@ import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.Videocam
@@ -116,6 +118,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.controlegastos.R
 import com.example.controlegastos.domain.model.Categoria
 import com.example.controlegastos.domain.model.ContaSaldo
@@ -1647,26 +1650,49 @@ private fun NovoCategoriaCard(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        val emojiSelecionado = uiState.novoIconeCategoria
+                        val iconeSelecionado = uiState.novoIconeCategoria
 
-                        if (
-                            emojiSelecionado.isNotBlank() &&
-                            emojiSelecionado.any { caractere -> caractere.code > 255 }
-                        ) {
-                            Text(
-                                text = emojiSelecionado,
-                                fontSize = 26.sp,
-                                maxLines = 1
-                            )
-                        } else {
-                            Icon(
-                                painter = painterResource(
-                                    id = R.drawable.engrenagem
-                                ),
-                                contentDescription = "Escolher ícone da categoria",
-                                tint = Color.Unspecified,
-                                modifier = Modifier.size(24.dp)
-                            )
+                        val context = LocalContext.current
+
+                        val resId = remember(iconeSelecionado) {
+                            if (iconeSelecionado.isBlank()) {
+                                0
+                            } else {
+                                context.resources.getIdentifier(
+                                    iconeSelecionado,
+                                    "drawable",
+                                    context.packageName
+                                )
+                            }
+                        }
+
+                        when {
+                            resId != 0 -> {
+                                Image(
+                                    painter = painterResource(id = resId),
+                                    contentDescription = "Ícone selecionado",
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+
+                            iconeSelecionado.isNotBlank() &&
+                                    iconeSelecionado.any { caractere ->
+                                        caractere.code > 255
+                                    } -> {
+                                Text(
+                                    text = iconeSelecionado,
+                                    fontSize = 24.sp
+                                )
+                            }
+
+                            else -> {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Selecionar ícone",
+                                    tint = Color(0xFF9CA3AF),
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
                         }
                     }
 
@@ -1675,8 +1701,8 @@ private fun NovoCategoriaCard(
                         onDismiss = {
                             mostrarPicker = false
                         },
-                        onSelect = { emoji ->
-                            onSelecionarEmoji(emoji)
+                        onSelect = { iconeSelecionado ->
+                            onSelecionarEmoji(iconeSelecionado)
                             mostrarPicker = false
                         }
                     )
@@ -1811,13 +1837,15 @@ private fun EmojiPickerDropdown(
     onDismiss: () -> Unit,
     onSelect: (String) -> Unit
 ) {
+    val context = LocalContext.current
+
     val emojis = listOf(
-        "🍔", "🍕", "🍣", "🛒", "💻",
-        "🎮", "🎬", "🎁", "🏠", "❤️",
-        "🏋️", "✈️", "🐶", "🏖️", "🎓",
-        "🛠️", "🧾", "💡", "⚽", "🎧",
+        "🍕", "🛒", "💻",
+        "🎮", "🎬", "🎁", "🏠",
+        "🏋️", "jw", "shopee", "amazon","aliexpress","mercado_livre", "🐶", "🏖️", "🎓",
+        "🛠️", "roupas", "💡", "⚽", "🎧",
         "🛏️", "🚗", "🛍️", "💊", "🍿",
-        "📦", "💰", "🎉", "🐾", "📚"
+        "📦", "💰", "🎉","medic", "internet"
     )
 
     DropdownMenu(
@@ -1841,6 +1869,14 @@ private fun EmojiPickerDropdown(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             emojis.forEach { emoji ->
+                val resId = remember(emoji) {
+                    context.resources.getIdentifier(
+                        emoji,
+                        "drawable",
+                        context.packageName
+                    )
+                }
+
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -1851,10 +1887,18 @@ private fun EmojiPickerDropdown(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = emoji,
-                        fontSize = MaterialTheme.typography.bodyLarge.fontSize
-                    )
+                    if (resId != 0) {
+                        Image(
+                            painter = painterResource(id = resId),
+                            contentDescription = emoji,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    } else {
+                        Text(
+                            text = emoji,
+                            fontSize = 22.sp
+                        )
+                    }
                 }
             }
         }
