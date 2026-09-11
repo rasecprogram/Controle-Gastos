@@ -54,7 +54,7 @@ class DashboardViewModel @Inject constructor(
                 .asSequence()
                 .filter { conta ->
                     conta.tipo == TipoContaSaldo.CONTA ||
-                            conta.tipo == TipoContaSaldo.SALDO_RESERVADO
+                            conta.tipo == TipoContaSaldo.CARTEIRA
                 }
                 .filter { conta ->
                     conta.saldoCentavos > 0L

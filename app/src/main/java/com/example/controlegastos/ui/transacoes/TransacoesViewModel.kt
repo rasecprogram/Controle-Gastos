@@ -6,6 +6,7 @@ import com.example.controlegastos.domain.model.Cartao
 import com.example.controlegastos.domain.model.ContaSaldo
 import com.example.controlegastos.domain.model.DespesaDetalhada
 import com.example.controlegastos.domain.model.FaturaCartao
+import com.example.controlegastos.domain.model.TipoContaSaldo
 import com.example.controlegastos.domain.model.TipoLancamento
 import com.example.controlegastos.domain.repository.CartaoRepository
 import com.example.controlegastos.domain.repository.ContaSaldoRepository
@@ -103,6 +104,60 @@ class TransacoesViewModel @Inject constructor(
             )
         }
 
+    fun transferirSaldo(
+        contaOrigemId: Int,
+        contaDestinoId: Int,
+        valorCentavos: Long
+    ) {
+        if (contaOrigemId == contaDestinoId) {
+            return
+        }
+
+        if (valorCentavos <= 0L) {
+            return
+        }
+
+        viewModelScope.launch {
+            val contasAtuais = uiState.value.contas
+
+            val contaOrigem = contasAtuais.firstOrNull { conta ->
+                conta.id == contaOrigemId
+            } ?: return@launch
+
+            val contaDestino = contasAtuais.firstOrNull { conta ->
+                conta.id == contaDestinoId
+            } ?: return@launch
+
+            if (!contaOrigem.ativo || !contaDestino.ativo) {
+                return@launch
+            }
+
+            if (valorCentavos > contaOrigem.saldoCentavos) {
+                return@launch
+            }
+
+            val novoSaldoOrigem =
+                contaOrigem.saldoCentavos - valorCentavos
+
+            val novoSaldoDestino =
+                contaDestino.saldoCentavos + valorCentavos
+
+            val origemAtualizada = contaSaldoRepository.atualizarSaldo(
+                contaId = contaOrigem.id,
+                novoSaldoCentavos = novoSaldoOrigem
+            )
+
+            if (!origemAtualizada) {
+                return@launch
+            }
+
+            contaSaldoRepository.atualizarSaldo(
+                contaId = contaDestino.id,
+                novoSaldoCentavos = novoSaldoDestino
+            )
+        }
+    }
+
     private val contas: Flow<List<ContaSaldo>> =
         contaSaldoRepository.observarTodas()
 
@@ -157,30 +212,20 @@ class TransacoesViewModel @Inject constructor(
             conta.ativo
         }
 
-        /*
-         * Despesas avulsas são despesas:
-         * - sem cartão;
-         * - não fixas.
-         *
-         * Elas continuam sendo usadas para calcular o saldo real
-         * quando já foram pagas diretamente por uma conta.
-         */
+        val contasUsadasNoSaldo = contasAtivas.filter { conta ->
+            conta.tipo == TipoContaSaldo.CONTA ||
+                    conta.tipo == TipoContaSaldo.CARTEIRA
+        }
+
+        val saldoInicialTotal = contasUsadasNoSaldo.sumOf { conta ->
+            conta.saldoCentavos
+        }
+
         val despesasAvulsas = dados.despesasMesCompra.filter { despesa ->
             despesa.cartaoId == null &&
                     despesa.tipoLancamento != TipoLancamento.FIXA
         }
 
-        /*
-         * Total exibido no card superior da tela de transações.
-         *
-         * Inclui:
-         * - compras únicas no cartão;
-         * - compras parceladas no cartão;
-         * - despesas fixas daquele mês.
-         *
-         * Não inclui despesas avulsas pagas por conta/carteira,
-         * pois essas já afetam diretamente o saldo das contas.
-         */
         val despesasDoMesTotal = dados.despesasMesCompra
             .asSequence()
             .filter { despesa ->
@@ -211,17 +256,6 @@ class TransacoesViewModel @Inject constructor(
             }
             .toList()
 
-        val saldoInicialTotal = contasAtivas.sumOf { conta ->
-            conta.saldoCentavos
-        }
-
-        /*
-         * O saldo disponível é reduzido somente por despesas avulsas
-         * já pagas usando uma conta de saldo.
-         *
-         * Compras no cartão não reduzem o saldo aqui, porque só
-         * reduzem a conta quando a fatura é efetivamente paga.
-         */
         val despesasAvulsasTotal = despesasAvulsas
             .asSequence()
             .filter { despesa ->
@@ -404,6 +438,8 @@ class TransacoesViewModel @Inject constructor(
         }
     }
 }
+
+
 
 private data class FiltrosTelaTransacoes(
     val mes: YearMonth,

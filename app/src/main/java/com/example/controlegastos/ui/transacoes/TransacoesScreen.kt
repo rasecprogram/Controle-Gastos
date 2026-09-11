@@ -94,6 +94,13 @@ import java.util.Locale
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+
 
 
 private val CorFundoApp = Color(0xFFECF0ED)
@@ -129,6 +136,9 @@ fun TransacoesScreen(
     var contaSelecionada by remember { mutableStateOf<ContaSaldo?>(null) }
     var processandoPagamento by remember { mutableStateOf(false) }
     var faturaParaVer by remember { mutableStateOf<FaturaCartao?>(null) }
+    var mostrarTransferencias by remember {
+        mutableStateOf(false)
+    }
 
     // Transações está na posição 1 da barra de navegação inferior
     var selectedIndex by remember { mutableStateOf(1) }
@@ -211,7 +221,30 @@ fun TransacoesScreen(
                 }
 
                 item(key = "titulo_contas") {
-                    TituloSecao(texto = "Contas")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TituloSecao(
+                            texto = "Contas"
+                        )
+
+                        Spacer(
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Text(
+                            text = "Transferências",
+                            color = Color(0xFF0F5A4A),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clickable {
+                                    mostrarTransferencias = true
+                                }
+                                .padding(vertical = 4.dp)
+                        )
+                    }
                 }
 
                 items(
@@ -502,12 +535,32 @@ fun TransacoesScreen(
         )
     }
 
+
+
     faturaParaVer?.let { f ->
         DialogoVerFatura(
             fatura = f,
             despesasFixasDoMes = uiState.despesasFixas,
             visivel = uiState.valoresVisiveis,
             onFechar = { faturaParaVer = null }
+        )
+    }
+
+    if (mostrarTransferencias) {
+        DialogTransferenciaSaldo(
+            contas = uiState.contas,
+            onDismiss = {
+                mostrarTransferencias = false
+            },
+            onConfirmarTransferencia = { origemId, destinoId, valorCentavos ->
+                viewModel.transferirSaldo(
+                    contaOrigemId = origemId,
+                    contaDestinoId = destinoId,
+                    valorCentavos = valorCentavos
+                )
+
+                mostrarTransferencias = false
+            }
         )
     }
 }
@@ -873,7 +926,7 @@ private fun CardConta(
                     text = when (conta.tipo) {
                         TipoContaSaldo.CONTA -> "Conta bancária"
                         TipoContaSaldo.CARTEIRA -> "Carteira"
-                        TipoContaSaldo.SALDO_RESERVADO -> "Saldo reservado"
+                        TipoContaSaldo.SALDO_RESERVADO -> "Cofre"
                     },
                     color = Color(0xFF7D8B88),
                     style = MaterialTheme.typography.bodySmall
@@ -1525,6 +1578,425 @@ private fun diasParaVencerTexto(fatura: FaturaCartao): String {
         dias == 1L -> "Falta 1 dia para vencer"
         else -> "Faltam $dias dias para vencer"
     }
+}
+
+@Composable
+private fun DialogTransferenciaSaldo(
+    contas: List<ContaSaldo>,
+    onDismiss: () -> Unit,
+    onConfirmarTransferencia: (
+        contaOrigemId: Int,
+        contaDestinoId: Int,
+        valorCentavos: Long
+    ) -> Unit
+) {
+    var contaOrigem by remember {
+        mutableStateOf<ContaSaldo?>(null)
+    }
+
+    var contaDestino by remember {
+        mutableStateOf<ContaSaldo?>(null)
+    }
+
+    var textoValor by remember {
+        mutableStateOf("")
+    }
+
+    val valorCentavos = textoValor.paraCentavos()
+
+    val origemValida = contaOrigem != null
+    val destinoValido = contaDestino != null
+    val contasDiferentes = contaOrigem?.id != contaDestino?.id
+    val possuiSaldoSuficiente =
+        contaOrigem?.saldoCentavos?.let { saldoOrigem ->
+            valorCentavos > 0L && valorCentavos <= saldoOrigem
+        } ?: false
+
+    val podeTransferir =
+        origemValida &&
+                destinoValido &&
+                contasDiferentes &&
+                possuiSaldoSuficiente
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            shape = RoundedCornerShape(22.dp),
+            color = Color.White,
+            shadowElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Transferência",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = CorTexto
+                        )
+
+                        Spacer(
+                            modifier = Modifier.height(3.dp)
+                        )
+
+                        Text(
+                            text = "Mova valores entre contas, carteira e cofre",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF7D8B88)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onDismiss
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Fechar",
+                            tint = Color(0xFF65707A)
+                        )
+                    }
+                }
+
+                Spacer(
+                    modifier = Modifier.height(18.dp)
+                )
+
+                Text(
+                    text = "DE",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp,
+                    color = Color(0xFF7D8B88)
+                )
+
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
+
+                contas.forEach { conta ->
+                    OpcaoContaTransferencia(
+                        conta = conta,
+                        selecionada = conta.id == contaOrigem?.id,
+                        onClick = {
+                            contaOrigem = conta
+
+                            if (contaDestino?.id == conta.id) {
+                                contaDestino = null
+                            }
+                        }
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.height(16.dp)
+                )
+
+                Text(
+                    text = "PARA",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp,
+                    color = Color(0xFF7D8B88)
+                )
+
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
+
+                contas.forEach { conta ->
+                    OpcaoContaTransferencia(
+                        conta = conta,
+                        selecionada = conta.id == contaDestino?.id,
+                        desabilitada = conta.id == contaOrigem?.id,
+                        onClick = {
+                            contaDestino = conta
+                        }
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.height(16.dp)
+                )
+
+                OutlinedTextField(
+                    value = textoValor.formatarValorTransferencia(),
+                    onValueChange = { novoTexto ->
+                        textoValor = novoTexto.filter { caractere ->
+                            caractere.isDigit()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text("Valor da transferência")
+                    },
+                    placeholder = {
+                        Text("Ex.: 500,00")
+                    },
+                    prefix = {
+                        Text("R$ ")
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = CorPrincipal,
+                        focusedLabelColor = CorPrincipal,
+                        cursorColor = CorPrincipal
+                    )
+                )
+
+                if (contaOrigem != null) {
+                    Spacer(
+                        modifier = Modifier.height(8.dp)
+                    )
+
+                    Text(
+                        text = "Disponível em ${contaOrigem?.nome}: " +
+                                "${contaOrigem?.saldoCentavos?.formatarMoeda(true)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF7D8B88)
+                    )
+                }
+
+                if (
+                    contaOrigem != null &&
+                    contaDestino != null &&
+                    !contasDiferentes
+                ) {
+                    Spacer(
+                        modifier = Modifier.height(8.dp)
+                    )
+
+                    Text(
+                        text = "Selecione contas diferentes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFD84315)
+                    )
+                }
+
+                if (
+                    contaOrigem != null &&
+                    valorCentavos > contaOrigem!!.saldoCentavos
+                ) {
+                    Spacer(
+                        modifier = Modifier.height(8.dp)
+                    )
+
+                    Text(
+                        text = "O valor é maior que o saldo disponível na origem.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFD84315)
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.height(20.dp)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = Color(0xFFE1E7E3)
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                    ) {
+                        Text(
+                            text = "Cancelar",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            val origem = contaOrigem ?: return@Button
+                            val destino = contaDestino ?: return@Button
+
+                            onConfirmarTransferencia(
+                                origem.id,
+                                destino.id,
+                                valorCentavos
+                            )
+                        },
+                        enabled = podeTransferir,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CorPrincipal,
+                            disabledContainerColor = Color(0xFFB8CECA),
+                            contentColor = Color.White,
+                            disabledContentColor = Color.White.copy(alpha = 0.75f)
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                    ) {
+                        Text(
+                            text = "Transferir",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OpcaoContaTransferencia(
+    conta: ContaSaldo,
+    selecionada: Boolean,
+    desabilitada: Boolean = false,
+    onClick: () -> Unit
+) {
+    val corBorda = when {
+        desabilitada -> Color(0xFFE8ECEA)
+        selecionada -> CorPrincipal
+        else -> Color(0xFFE1E7E3)
+    }
+
+    val corFundo = when {
+        desabilitada -> Color(0xFFF7F8F7)
+        selecionada -> Color(0xFFEAF4EF)
+        else -> Color.White
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+            .clickable(
+                enabled = !desabilitada,
+                onClick = onClick
+            ),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = corFundo
+        ),
+        border = BorderStroke(
+            width = if (selecionada) 2.dp else 1.dp,
+            color = corBorda
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = 14.dp,
+                    vertical = 12.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFFF0F4EF)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = when (conta.tipo) {
+                        TipoContaSaldo.CONTA -> "🏦"
+                        TipoContaSaldo.CARTEIRA -> "👛"
+                        TipoContaSaldo.SALDO_RESERVADO -> "💰"
+                    },
+                    fontSize = 19.sp
+                )
+            }
+
+            Spacer(
+                modifier = Modifier.width(12.dp)
+            )
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = conta.nome,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (desabilitada) {
+                        Color(0xFFB2BCB7)
+                    } else {
+                        CorTexto
+                    }
+                )
+
+                Spacer(
+                    modifier = Modifier.height(2.dp)
+                )
+
+                Text(
+                    text = when (conta.tipo) {
+                        TipoContaSaldo.CONTA -> "Conta"
+                        TipoContaSaldo.CARTEIRA -> "Carteira"
+                        TipoContaSaldo.SALDO_RESERVADO -> "Cofre"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF7D8B88)
+                )
+            }
+
+            Text(
+                text = conta.saldoCentavos.formatarMoeda(true),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (desabilitada) {
+                    Color(0xFFB2BCB7)
+                } else {
+                    CorTexto
+                }
+            )
+        }
+    }
+}
+
+private fun String.paraCentavos(): Long {
+    return this
+        .filter { caractere ->
+            caractere.isDigit()
+        }
+        .toLongOrNull() ?: 0L
+}
+
+private fun String.formatarValorTransferencia(): String {
+    val valorCentavos = this
+        .filter { caractere ->
+            caractere.isDigit()
+        }
+        .toLongOrNull() ?: 0L
+
+    return NumberFormat
+        .getNumberInstance(Locale("pt", "BR"))
+        .apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
+        .format(valorCentavos / 100.0)
 }
 
 @Composable
