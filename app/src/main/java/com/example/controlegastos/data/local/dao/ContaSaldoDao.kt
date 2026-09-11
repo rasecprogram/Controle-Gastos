@@ -29,6 +29,14 @@ interface ContaSaldoDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun inserirTodasParaBackup(contas: List<ContaSaldoEntity>)
 
+    @Query(
+        """
+    DELETE FROM tb_contas_saldo
+    WHERE id = :contaId
+    """
+    )
+    suspend fun excluirPorId(contaId: Int): Int
+
     @Query("DELETE FROM tb_contas_saldo")
     suspend fun limparTodas()
 

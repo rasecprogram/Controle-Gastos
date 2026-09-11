@@ -155,6 +155,9 @@ fun EdicaoScreen(
     viewModel: EdicaoViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var contaParaExcluir by remember {
+        mutableStateOf<ContaSaldo?>(null)
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     var secaoSelecionada by remember { mutableIntStateOf(0) }
     var mostrarFormularioSaldo by remember { mutableStateOf(false) }
@@ -181,7 +184,7 @@ fun EdicaoScreen(
                     descricao = when (secaoSelecionada) {
                         0 -> "Gerencie as categorias dos seus gastos"
                         1 -> "Configure os cartões utilizados"
-                        2 -> "Cadastre contas, carteira e saldo reservado"
+                        2 -> "Cadastre contas, carteira e cofrinho"
                         else -> ""
                     }
                 ) {
@@ -349,6 +352,9 @@ fun EdicaoScreen(
                                     conta = conta,
                                     onAtivacaoAlterada = { ativa ->
                                         viewModel.alterarAtivacaoConta(conta, ativa)
+                                    },
+                                    onExcluir = { contaId ->
+                                        viewModel.excluirContaSaldo(contaId)
                                     }
                                 )
                             }
@@ -482,6 +488,18 @@ fun EdicaoScreen(
                 }
             },
             onAdicionarDespesa = onAdicionarDespesa
+        )
+    }
+    contaParaExcluir?.let { conta ->
+        DialogExcluirContaSaldo(
+            contaNome = conta.nome,
+            onDismiss = {
+                contaParaExcluir = null
+            },
+            onConfirm = {
+                viewModel.excluirContaSaldo(conta.id)
+                contaParaExcluir = null
+            }
         )
     }
 }
@@ -2572,12 +2590,17 @@ private fun EditorDatasCartao(
 @Composable
 private fun LinhaContaSaldo(
     conta: ContaSaldo,
-    onAtivacaoAlterada: (Boolean) -> Unit
+    onAtivacaoAlterada: (Boolean) -> Unit,
+    onExcluir: (Int) -> Unit
 ) {
+    var mostrarDialogoExcluir by remember {
+        mutableStateOf(false)
+    }
+
     val tituloTipo = when (conta.tipo) {
         TipoContaSaldo.CONTA -> "Conta"
         TipoContaSaldo.CARTEIRA -> "Carteira"
-        TipoContaSaldo.SALDO_RESERVADO -> "Saldo reservado"
+        TipoContaSaldo.SALDO_RESERVADO -> "Cofre"
     }
 
     val iconeTipo = when (conta.tipo) {
@@ -2589,13 +2612,10 @@ private fun LinhaContaSaldo(
     val context = LocalContext.current
 
     val logoRes = remember(conta.instituicaoChave) {
-        val nomeArquivo = if (
-            conta.instituicaoChave.contains("caixa", ignoreCase = true) ||
-            conta.instituicaoChave.equals("cx", ignoreCase = true)
-        ) {
-            "cef"
-        } else {
-            conta.instituicaoChave
+        val nomeArquivo = when {
+            conta.instituicaoChave.contains("caixa", ignoreCase = true) -> "cef"
+            conta.instituicaoChave.equals("cx", ignoreCase = true) -> "cef"
+            else -> conta.instituicaoChave
         }
 
         context.resources.getIdentifier(
@@ -2606,7 +2626,14 @@ private fun LinhaContaSaldo(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = {},
+                onLongClick = {
+                    mostrarDialogoExcluir = true
+                }
+            ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
@@ -2648,7 +2675,9 @@ private fun LinhaContaSaldo(
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(
+                modifier = Modifier.width(12.dp)
+            )
 
             Column(
                 modifier = Modifier.weight(1f)
@@ -2660,7 +2689,9 @@ private fun LinhaContaSaldo(
                     fontWeight = FontWeight.SemiBold
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(
+                    modifier = Modifier.height(4.dp)
+                )
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -2672,7 +2703,9 @@ private fun LinhaContaSaldo(
                         modifier = Modifier.size(14.dp)
                     )
 
-                    Spacer(modifier = Modifier.width(5.dp))
+                    Spacer(
+                        modifier = Modifier.width(5.dp)
+                    )
 
                     Text(
                         text = tituloTipo,
@@ -2680,7 +2713,9 @@ private fun LinhaContaSaldo(
                         style = MaterialTheme.typography.bodySmall
                     )
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(
+                        modifier = Modifier.width(6.dp)
+                    )
 
                     Text(
                         text = conta.saldoCentavos.formatarMoedaPtBr(),
@@ -2698,6 +2733,132 @@ private fun LinhaContaSaldo(
             )
         }
     }
+
+    if (mostrarDialogoExcluir) {
+        DialogExcluirContaSaldo(
+            contaNome = conta.nome,
+            onDismiss = {
+                mostrarDialogoExcluir = false
+            },
+            onConfirm = {
+                onExcluir(conta.id)
+                mostrarDialogoExcluir = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun DialogExcluirContaSaldo(
+    contaNome: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = Color.White,
+        title = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFDF2F2)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteOutline,
+                        contentDescription = null,
+                        tint = Color(0xFFD84315),
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.height(16.dp)
+                )
+
+                Text(
+                    text = "Excluir saldo?",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF143045),
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        text = {
+            Text(
+                text = "O saldo \"$contaNome\" será removido definitivamente. " +
+                        "Os lançamentos já registrados serão mantidos, mas deixarão " +
+                        "de ficar vinculados a este saldo. Esta ação não pode ser desfeita.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF8A929B),
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+            )
+        },
+        confirmButton = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = 8.dp,
+                        vertical = 8.dp
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = Color(0xFFEBDFE3)
+                    ),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF143045),
+                        containerColor = Color.Transparent
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(46.dp)
+                ) {
+                    Text(
+                        text = "Cancelar",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Button(
+                    onClick = onConfirm,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFD84315),
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(46.dp)
+                ) {
+                    Text(
+                        text = "Excluir",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        },
+        dismissButton = {}
+    )
 }
 
 @Composable

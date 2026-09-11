@@ -122,6 +122,20 @@ class EdicaoViewModel @Inject constructor(
         }
     }
 
+    fun excluirContaSaldo(contaId: Int) {
+        viewModelScope.launch {
+            val excluiu = contaSaldoRepository.excluir(contaId)
+
+            formulario.value = formulario.value.copy(
+                mensagem = if (excluiu) {
+                    "Saldo excluído com sucesso."
+                } else {
+                    "Não foi possível excluir o saldo."
+                }
+            )
+        }
+    }
+
     fun alterarAtivacaoCategoria(categoria: Categoria, ativa: Boolean) {
         viewModelScope.launch {
             runCatching {
@@ -399,7 +413,7 @@ class EdicaoViewModel @Inject constructor(
                             TipoContaSaldo.CONTA -> instituicao.nome
                             TipoContaSaldo.CARTEIRA -> "Carteira"
                             TipoContaSaldo.SALDO_RESERVADO -> {
-                                "Saldo reservado ${instituicao.nome}"
+                                "${instituicao.nome}"
                             }
                         },
                         instituicaoChave = instituicao.chave,

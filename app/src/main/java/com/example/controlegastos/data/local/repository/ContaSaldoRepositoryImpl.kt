@@ -30,6 +30,10 @@ class ContaSaldoRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun excluir(contaId: Int): Boolean {
+        return contaSaldoDao.excluirPorId(contaId) > 0
+    }
+
     override suspend fun atualizarAtivacao(contaId: Int, ativo: Boolean): Boolean {
         return contaSaldoDao.atualizarAtivacao(contaId, ativo) > 0
     }
