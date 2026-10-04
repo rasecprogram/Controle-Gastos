@@ -1,19 +1,24 @@
 package com.example.controlegastos
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import com.example.controlegastos.ui.ControleGastosApp
-import dagger.hilt.android.AndroidEntryPoint
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import com.example.controlegastos.ui.ControleGastosApp
+import com.example.controlegastos.ui.intro.IntroScreen
 import com.example.controlegastos.ui.theme.ControleGastosTheme
+import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -24,12 +29,15 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
+            var mostrarIntro by rememberSaveable {
+                mutableStateOf(true)
+            }
+
             val solicitadorPermissaoNotificacao =
                 rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
                 ) {
-                    // Não precisamos fazer nada aqui.
-                    // O app continuará funcionando mesmo se a permissão for negada.
+                    // O app segue funcionando mesmo se a permissão for negada.
                 }
 
             LaunchedEffect(Unit) {
@@ -48,7 +56,15 @@ class MainActivity : ComponentActivity() {
             }
 
             ControleGastosTheme {
-                ControleGastosApp()
+                if (mostrarIntro) {
+                    IntroScreen(
+                        onIntroFinalizada = {
+                            mostrarIntro = false
+                        }
+                    )
+                } else {
+                    ControleGastosApp()
+                }
             }
         }
     }

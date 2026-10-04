@@ -69,6 +69,8 @@ dependencies {
     implementation(libs.voyager.viewmodel)
 
     testImplementation(libs.junit)
+    implementation("androidx.media3:media3-exoplayer:1.5.1")
+    implementation("androidx.media3:media3-ui:1.5.1")
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
