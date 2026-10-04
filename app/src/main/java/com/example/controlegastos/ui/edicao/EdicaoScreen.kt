@@ -195,8 +195,16 @@ fun EdicaoScreen(
                 }
             },
             snackbarHost = {
-                SnackbarHost(hostState = snackbarHostState)
-            }
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.padding(
+                        bottom = 110.dp
+                    )
+                )
+            },
+
+
+
         ) { innerPadding ->
             if (uiState.carregando) {
                 Box(
@@ -230,6 +238,8 @@ fun EdicaoScreen(
                                     onSelecionarSugerida = viewModel::selecionarCategoriaSugerida,
                                     onNomeAlterado = viewModel::atualizarNomeCategoria,
                                     onTetoAlterado = viewModel::atualizarTetoCategoria,
+                                    onEditarCategoria = viewModel::editarCategoria,
+                                    onCancelarEdicaoCategoria = viewModel::cancelarEdicaoCategoria,
                                     onSalvar = viewModel::salvarCategoria,
                                     onAlternarAtivacao = { categoria, ativa ->
                                         viewModel.alterarAtivacaoCategoria(categoria, ativa)
@@ -480,6 +490,7 @@ fun EdicaoScreen(
             selectedIndex = selectedIndex,
             onItemSelected = { index ->
                 selectedIndex = index
+
                 when (index) {
                     0 -> onNavegarInicio()
                     1 -> onNavegarTransacoes()
@@ -1127,6 +1138,8 @@ private fun CategoriasContent(
     onNomeAlterado: (String) -> Unit,
     onTetoAlterado: (String) -> Unit,
     onSalvar: () -> Unit,
+    onEditarCategoria: (Categoria) -> Unit,
+    onCancelarEdicaoCategoria: () -> Unit,
     onAlternarAtivacao: (Categoria, Boolean) -> Unit,
     onRemoverCategoria: (Categoria) -> Unit,
     onSelecionarEmoji: (String) -> Unit
@@ -1250,7 +1263,9 @@ private fun CategoriasContent(
                 ativosFiltrados.forEach { categoria ->
                     CategoriaPill(
                         categoria = categoria,
-                        onClick = { },
+                        onClick = {
+                            onEditarCategoria(categoria)
+                        },
                         onToggle = { ativa -> onAlternarAtivacao(categoria, ativa) },
                         onRemove = { onRemoverCategoria(categoria) }
                     )
@@ -1269,7 +1284,8 @@ private fun CategoriasContent(
             onNomeAlterado = onNomeAlterado,
             onTetoAlterado = onTetoAlterado,
             onSalvar = onSalvar,
-            onSelecionarEmoji = onSelecionarEmoji
+            onSelecionarEmoji = onSelecionarEmoji,
+            onCancelarEdicaoCategoria = onCancelarEdicaoCategoria
         )
     }
 }
@@ -1331,7 +1347,8 @@ private fun CategoriaPill(
             colors = CardDefaults.cardColors(containerColor = CorPillBg),
             modifier = Modifier
                 .height(pillHeight)
-                .widthIn(min = 88.dp, max = 220.dp),
+                .widthIn(min = 88.dp, max = 220.dp)
+                .clickable(onClick = onClick),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
             Row(
@@ -1608,7 +1625,8 @@ private fun NovoCategoriaCard(
     onNomeAlterado: (String) -> Unit,
     onTetoAlterado: (String) -> Unit,
     onSalvar: () -> Unit,
-    onSelecionarEmoji: (String) -> Unit
+    onSelecionarEmoji: (String) -> Unit,
+    onCancelarEdicaoCategoria: () -> Unit
 ) {
     var mostrarPicker by remember { mutableStateOf(false) }
 
@@ -1628,7 +1646,11 @@ private fun NovoCategoriaCard(
             modifier = Modifier.padding(12.dp)
         ) {
             Text(
-                text = "Nova categoria",
+                text = if (uiState.categoriaEmEdicaoId != null) {
+                    "Editar categoria"
+                } else {
+                    "Nova categoria"
+                },
                 color = CorTextoEdicao,
                 fontWeight = FontWeight.SemiBold
             )
@@ -1843,11 +1865,31 @@ private fun NovoCategoriaCard(
                     .height(56.dp),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Adicionar categoria")
+                Text(
+                    text = if (uiState.categoriaEmEdicaoId != null) {
+                        "Salvar alterações"
+                    } else {
+                        "Adicionar categoria"
+                    }
+                )
+            }
+
+            if (uiState.categoriaEmEdicaoId != null) {
+                TextButton(
+                    onClick = onCancelarEdicaoCategoria,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Cancelar edição",
+                        color = CorEdicao
+                    )
+                }
             }
         }
     }
 }
+
+
 
 @Composable
 private fun EmojiPickerDropdown(

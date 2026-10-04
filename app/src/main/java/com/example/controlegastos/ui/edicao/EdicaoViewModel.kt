@@ -47,7 +47,9 @@ class EdicaoViewModel @Inject constructor(
 
     fun selecionarCategoriaSugerida(categoria: CategoriaSugerida) {
         formulario.value = formulario.value.copy(
+            categoriaEmEdicaoId = null,
             novaCategoriaNome = categoria.nome,
+            novaCategoriaTetoTexto = "",
             novoIconeCategoria = categoria.iconeChave,
             novaCategoriaCorHex = categoria.corHex,
             mensagem = null
@@ -80,43 +82,111 @@ class EdicaoViewModel @Inject constructor(
         val nome = estado.novaCategoriaNome.trim()
 
         if (nome.isBlank()) {
-            formulario.value = estado.copy(
+            formulario.value = formulario.value.copy(
                 mensagem = "Informe o nome da categoria."
             )
             return
         }
 
-        if (estado.categorias.any { it.nome.equals(nome, ignoreCase = true) }) {
-            formulario.value = estado.copy(
-                mensagem = "Essa categoria já está cadastrada."
+        val textoTeto = estado.novaCategoriaTetoTexto.trim()
+
+        val tetoMensal = if (textoTeto.isBlank()) {
+            null
+        } else {
+            textoTeto.toLongOrNull()
+        }
+
+        if (
+            textoTeto.isNotBlank() &&
+            (tetoMensal == null || tetoMensal < 0L)
+        ) {
+            formulario.value = formulario.value.copy(
+                mensagem = "Informe um teto mensal válido."
             )
             return
         }
 
+        val categorias = uiState.value.categorias
+        val categoriaId = estado.categoriaEmEdicaoId
+
+        val categoriaOriginal = categoriaId?.let { id ->
+            categorias.firstOrNull { categoria ->
+                categoria.id == id
+            }
+        }
+
+        if (categoriaId != null && categoriaOriginal == null) {
+            formulario.value = formulario.value.copy(
+                mensagem = "A categoria não foi encontrada. Selecione-a novamente."
+            )
+            return
+        }
+
+        fun normalizarNome(valor: String): String {
+            return valor
+                .trim()
+                .replace(Regex("\\s+"), " ")
+                .lowercase(java.util.Locale.ROOT)
+        }
+
+        val nomeNormalizado = normalizarNome(nome)
+
+        val existeOutraComEsseNome = categorias.any { categoria ->
+            categoria.id != categoriaId &&
+                    normalizarNome(categoria.nome) == nomeNormalizado
+        }
+
+        val mantendoNomeOriginal = categoriaOriginal?.let { categoria ->
+            normalizarNome(categoria.nome) == nomeNormalizado
+        } ?: false
+
+        if (existeOutraComEsseNome && !mantendoNomeOriginal) {
+            formulario.value = formulario.value.copy(
+                mensagem = "Já existe uma categoria com esse nome. " +
+                        "Toque nela para editar."
+            )
+            return
+        }
+
+        val categoriaParaSalvar = if (categoriaOriginal != null) {
+            categoriaOriginal.copy(
+                nome = nome,
+                corHex = estado.novaCategoriaCorHex,
+                tetoMensal = tetoMensal,
+                iconeChave = estado.novoIconeCategoria
+            )
+        } else {
+            Categoria(
+                id = 0,
+                nome = nome,
+                corHex = estado.novaCategoriaCorHex,
+                tetoMensal = tetoMensal,
+                iconeChave = estado.novoIconeCategoria,
+                ativa = true
+            )
+        }
+
         viewModelScope.launch {
-            runCatching {
-                categoriaRepository.salvar(
-                    Categoria(
-                        id = 0,
-                        nome = nome,
-                        corHex = estado.novaCategoriaCorHex,
-                        tetoMensal = estado.novaCategoriaTetoTexto
-                            .takeIf { it.isNotBlank() }
-                            ?.toLong(),
-                        iconeChave = estado.novoIconeCategoria,
-                        ativa = true
-                    )
+            try {
+                categoriaRepository.salvar(categoriaParaSalvar)
+
+                formulario.value = formulario.value.copy(
+                    categoriaEmEdicaoId = null,
+                    novaCategoriaNome = "",
+                    novaCategoriaTetoTexto = "",
+                    novoIconeCategoria = "outros",
+                    novaCategoriaCorHex = "#5F8D84",
+                    mensagem = if (categoriaId != null) {
+                        "Categoria atualizada com sucesso."
+                    } else {
+                        "Categoria cadastrada com sucesso."
+                    }
                 )
-            }.onSuccess {
-                formulario.value = EdicaoUiState(
-                    instituicaoSelecionada = estado.instituicaoSelecionada,
-                    tipoContaSelecionado = estado.tipoContaSelecionado,
-                    mensagem = "Categoria adicionada."
-                )
-            }.onFailure { erro ->
-                formulario.value = estado.copy(
-                    mensagem = erro.message
-                        ?: "Não foi possível salvar a categoria."
+            } catch (erro: kotlinx.coroutines.CancellationException) {
+                throw erro
+            } catch (_: Exception) {
+                formulario.value = formulario.value.copy(
+                    mensagem = "Não foi possível salvar a categoria."
                 )
             }
         }
@@ -436,6 +506,26 @@ class EdicaoViewModel @Inject constructor(
                 )
             }
         }
+    }
+    fun editarCategoria(categoria: Categoria) {
+        formulario.value = formulario.value.copy(
+            categoriaEmEdicaoId = categoria.id,
+            novaCategoriaNome = categoria.nome,
+            novaCategoriaTetoTexto = categoria.tetoMensal?.toString().orEmpty(),
+            novoIconeCategoria = categoria.iconeChave,
+            novaCategoriaCorHex = categoria.corHex,
+            mensagem = null
+        )
+    }
+    fun cancelarEdicaoCategoria() {
+        formulario.value = formulario.value.copy(
+            categoriaEmEdicaoId = null,
+            novaCategoriaNome = "",
+            novaCategoriaTetoTexto = "",
+            novoIconeCategoria = "outros",
+            novaCategoriaCorHex = "#5F8D84",
+            mensagem = null
+        )
     }
 
     fun alterarAtivacaoConta(conta: ContaSaldo, ativo: Boolean) {

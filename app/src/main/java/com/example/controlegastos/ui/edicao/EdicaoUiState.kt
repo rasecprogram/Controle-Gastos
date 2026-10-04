@@ -14,6 +14,7 @@ data class EdicaoUiState(
     val contas: List<ContaSaldo> = emptyList(),
 
     val novaCategoriaNome: String = "",
+    val categoriaEmEdicaoId: Int? = null,
     val novaCategoriaTetoTexto: String = "",
     val novoIconeCategoria: String = "outros",
     val novaCategoriaCorHex: String = "#5F8D84",

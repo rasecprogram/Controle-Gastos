@@ -117,6 +117,14 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
+import java.util.Locale
 
 @Composable
 fun InserirDespesaScreen(
@@ -631,57 +639,68 @@ private fun SeletorCategoria(
     uiState: InserirDespesaUiState,
     onCategoriaSelecionada: (Int) -> Unit
 ) {
-    var aberto by remember { mutableStateOf(false) }
+    var aberto by remember {
+        mutableStateOf(false)
+    }
+
+    var larguraCampoPx by remember {
+        mutableStateOf(0)
+    }
+
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+
+    val alturaMaximaMenu = (configuration.screenHeightDp * 0.5f).dp
+
+    val larguraMenu = with(density) {
+        larguraCampoPx.toDp()
+    }
 
     val categoriasAtivas = remember(uiState.categorias) {
-        uiState.categorias.filter { it.ativa }
+        uiState.categorias.filter { categoria ->
+            categoria.ativa
+        }
     }
 
     val categoriaSelecionada = uiState.categoriaSelecionada
-    val context = LocalContext.current
     val formatoCaixa = RoundedCornerShape(14.dp)
-    val corBordaNormal = Color(0xFFD1D5DB)
-    val corBordaAberta = Color(0xFF2962FF)
-
-    fun obterResourceIcone(chave: String): Int {
-        return context.resources.getIdentifier(
-            chave.lowercase(),
-            "drawable",
-            context.packageName
-        )
-    }
 
     @Composable
-    fun IconeCategoriaSelecionada(
-        iconeChave: String,
-        nomeCategoria: String
+    fun IconeDaCategoria(
+        categoria: com.example.controlegastos.domain.model.Categoria
     ) {
-        val resId = remember(iconeChave) {
-            obterResourceIcone(iconeChave)
+        val chave = categoria.iconeChave
+
+        val resId = remember(chave, context) {
+            context.resources.getIdentifier(
+                chave.lowercase(Locale.ROOT),
+                "drawable",
+                context.packageName
+            )
         }
 
         when {
             resId != 0 -> {
                 Image(
                     painter = painterResource(id = resId),
-                    contentDescription = nomeCategoria,
+                    contentDescription = categoria.nome,
                     modifier = Modifier.size(24.dp)
                 )
             }
 
-            iconeChave.ehEmoji() -> {
+            chave.any { caractere -> caractere.code > 255 } -> {
                 Text(
-                    text = iconeChave,
+                    text = chave,
                     fontSize = 22.sp
                 )
             }
 
             else -> {
                 Icon(
-                    imageVector = iconeCategoria(iconeChave),
-                    contentDescription = nomeCategoria,
-                    tint = categoriaSelecionada?.corHex?.toComposeColor()
-                        ?: Color(0xFF225F44),
+                    imageVector = iconeCategoria(chave),
+                    contentDescription = categoria.nome,
+                    tint = categoria.corHex.toComposeColor(),
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -689,9 +708,13 @@ private fun SeletorCategoria(
     }
 
     Box(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .onSizeChanged { tamanho ->
+                larguraCampoPx = tamanho.width
+            }
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
@@ -703,133 +726,129 @@ private fun SeletorCategoria(
                 .background(Color.White)
                 .border(
                     width = if (aberto) 2.dp else 1.dp,
-                    color = if (aberto) corBordaAberta else corBordaNormal,
+                    color = if (aberto) {
+                        Color(0xFF2962FF)
+                    } else {
+                        Color(0xFFD1D5DB)
+                    },
                     shape = formatoCaixa
                 )
-                .clickable { aberto = !aberto }
+                .clickable {
+                    aberto = !aberto
+                }
                 .padding(
                     start = 20.dp,
                     end = 16.dp,
                     top = 14.dp,
                     bottom = 14.dp
                 ),
-            contentAlignment = Alignment.CenterStart
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (categoriaSelecionada != null) {
-                    IconeCategoriaSelecionada(
-                        iconeChave = categoriaSelecionada.iconeChave ?: "",
-                        nomeCategoria = categoriaSelecionada.nome
-                    )
+            categoriaSelecionada?.let { categoria ->
+                IconeDaCategoria(categoria)
 
-                    Spacer(modifier = Modifier.width(12.dp))
-                }
-
-                Text(
-                    text = categoriaSelecionada?.nome
-                        ?: "Selecionar categoria...",
-                    color = if (categoriaSelecionada == null) {
-                        Color(0xFF9CA3AF)
-                    } else {
-                        Color(0xFF1F2937)
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f)
-                )
-
-                Icon(
-                    imageVector = if (aberto) {
-                        Icons.Default.KeyboardArrowUp
-                    } else {
-                        Icons.Default.KeyboardArrowDown
-                    },
-                    contentDescription = if (aberto) {
-                        "Fechar categorias"
-                    } else {
-                        "Abrir categorias"
-                    },
-                    tint = Color(0xFF374151),
-                    modifier = Modifier.size(24.dp)
+                Spacer(
+                    modifier = Modifier.width(12.dp)
                 )
             }
+
+            Text(
+                text = categoriaSelecionada?.nome
+                    ?: "Selecionar categoria...",
+                color = if (categoriaSelecionada == null) {
+                    Color(0xFF9CA3AF)
+                } else {
+                    Color(0xFF1F2937)
+                },
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Icon(
+                imageVector = if (aberto) {
+                    Icons.Default.KeyboardArrowUp
+                } else {
+                    Icons.Default.KeyboardArrowDown
+                },
+                contentDescription = if (aberto) {
+                    "Fechar categorias"
+                } else {
+                    "Abrir categorias"
+                },
+                tint = Color(0xFF374151),
+                modifier = Modifier.size(24.dp)
+            )
         }
 
-        if (aberto) {
-            Popup(
-                alignment = Alignment.TopStart,
-                onDismissRequest = { aberto = false },
-                properties = PopupProperties(
-                    focusable = true,
-                    dismissOnClickOutside = true,
-                    dismissOnBackPress = true
+        DropdownMenu(
+            expanded = aberto,
+            onDismissRequest = {
+                aberto = false
+            },
+            modifier = Modifier
+                .width(larguraMenu)
+                .heightIn(max = alturaMaximaMenu)
+                .background(Color.White)
+        ) {
+            if (categoriasAtivas.isEmpty()) {
+                Text(
+                    text = "Nenhuma categoria ativa",
+                    modifier = Modifier.padding(18.dp),
+                    color = Color(0xFF6B7280),
+                    style = MaterialTheme.typography.bodyMedium
                 )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 68.dp)
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(14.dp),
-                            clip = false
-                        )
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color.White)
-                        .border(
-                            width = 1.dp,
-                            color = Color(0xFFE5E7EB),
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                ) {
-                    if (categoriasAtivas.isEmpty()) {
-                        Text(
-                            text = "Nenhuma categoria ativa",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(18.dp),
-                            color = Color(0xFF6B7280),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    } else {
-                        categoriasAtivas.forEachIndexed { index, categoria ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onCategoriaSelecionada(categoria.id)
-                                        aberto = false
-                                    }
-                                    .padding(
-                                        horizontal = 24.dp,
-                                        vertical = 14.dp
-                                    ),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                IconeCategoriaSelecionada(
-                                    iconeChave = categoria.iconeChave ?: "",
-                                    nomeCategoria = categoria.nome
-                                )
+            } else {
+                categoriasAtivas.forEachIndexed { index, categoria ->
+                    val selecionada =
+                        categoria.id == categoriaSelecionada?.id
 
-                                Spacer(modifier = Modifier.width(16.dp))
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = categoria.nome,
+                                color = Color(0xFF1F2937),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (selecionada) {
+                                    FontWeight.SemiBold
+                                } else {
+                                    FontWeight.Normal
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        leadingIcon = {
+                            IconeDaCategoria(categoria)
+                        },
+                        onClick = {
+                            onCategoriaSelecionada(categoria.id)
+                            aberto = false
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                if (selecionada) {
+                                    Color(0xFFEAF4EF)
+                                } else {
+                                    Color.Transparent
+                                }
+                            ),
+                        contentPadding = PaddingValues(
+                            horizontal = 20.dp,
+                            vertical = 8.dp
+                        )
+                    )
 
-                                Text(
-                                    text = categoria.nome,
-                                    color = Color(0xFF1F2937),
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                            }
-
-                            if (index < categoriasAtivas.lastIndex) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 18.dp),
-                                    thickness = 1.dp,
-                                    color = Color(0xFFE5E7EB)
-                                )
-                            }
-                        }
+                    if (index < categoriasAtivas.lastIndex) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(
+                                horizontal = 18.dp
+                            ),
+                            thickness = 1.dp,
+                            color = Color(0xFFE5E7EB)
+                        )
                     }
                 }
             }
