@@ -131,6 +131,10 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+
 
 // ====== CORES / CONSTANTES DE ESTILO ======
 private val CorEdicao = Color(0xFF2F6F62)
@@ -365,6 +369,13 @@ fun EdicaoScreen(
                                     },
                                     onExcluir = { contaId ->
                                         viewModel.excluirContaSaldo(contaId)
+                                    },
+                                    onSalvarSaldo = { contaId, novoSaldo, aoConcluir ->
+                                        viewModel.ajustarSaldoConta(
+                                            contaId = contaId,
+                                            novoSaldoCentavos = novoSaldo,
+                                            aoConcluir = aoConcluir
+                                        )
                                     }
                                 )
                             }
@@ -2629,15 +2640,38 @@ private fun EditorDatasCartao(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun LinhaContaSaldo(
     conta: ContaSaldo,
     onAtivacaoAlterada: (Boolean) -> Unit,
-    onExcluir: (Int) -> Unit
+    onExcluir: (Int) -> Unit,
+    onSalvarSaldo: (Int, Long, (Boolean) -> Unit) -> Unit
 ) {
-    var mostrarDialogoExcluir by remember {
+    var mostrarDialogoExcluir by remember(conta.id) {
         mutableStateOf(false)
     }
+
+    var editarSaldo by remember(conta.id) {
+        mutableStateOf(false)
+    }
+
+    var saldoDigitos by remember(conta.id) {
+        mutableStateOf("")
+    }
+
+    var salvando by remember(conta.id) {
+        mutableStateOf(false)
+    }
+
+    val focusManager = LocalFocusManager.current
+
+    val novoSaldo = saldoDigitos.toLongOrNull() ?: 0L
+
+    val podeSalvar =
+        !salvando &&
+                novoSaldo >= 0L &&
+                novoSaldo != conta.saldoCentavos
 
     val tituloTipo = when (conta.tipo) {
         TipoContaSaldo.CONTA -> "Conta"
@@ -2653,10 +2687,18 @@ private fun LinhaContaSaldo(
 
     val context = LocalContext.current
 
-    val logoRes = remember(conta.instituicaoChave) {
+    val logoRes = remember(conta.instituicaoChave, context) {
         val nomeArquivo = when {
-            conta.instituicaoChave.contains("caixa", ignoreCase = true) -> "cef"
-            conta.instituicaoChave.equals("cx", ignoreCase = true) -> "cef"
+            conta.instituicaoChave.contains(
+                "caixa",
+                ignoreCase = true
+            ) -> "cef"
+
+            conta.instituicaoChave.equals(
+                "cx",
+                ignoreCase = true
+            ) -> "cef"
+
             else -> conta.instituicaoChave
         }
 
@@ -2670,10 +2712,24 @@ private fun LinhaContaSaldo(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .animateContentSize()
             .combinedClickable(
                 onClick = {},
+                onDoubleClick = {
+                    if (!salvando) {
+                        focusManager.clearFocus()
+                        saldoDigitos = conta.saldoCentavos
+                            .coerceAtLeast(0L)
+                            .toString()
+
+                        editarSaldo = !editarSaldo
+                    }
+                },
                 onLongClick = {
-                    mostrarDialogoExcluir = true
+                    if (!salvando) {
+                        focusManager.clearFocus()
+                        mostrarDialogoExcluir = true
+                    }
                 }
             ),
         shape = RoundedCornerShape(16.dp),
@@ -2684,95 +2740,186 @@ private fun LinhaContaSaldo(
             defaultElevation = 3.dp
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = 14.dp,
-                    vertical = 12.dp
-                ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
+        Column {
+            Row(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFF0F4EF)),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = 14.dp,
+                        vertical = 12.dp
+                    ),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (logoRes != 0) {
-                    Icon(
-                        painter = painterResource(id = logoRes),
-                        contentDescription = conta.nome,
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(24.dp)
-                    )
-                } else {
-                    Text(
-                        text = conta.nome.take(2).uppercase(),
-                        color = conta.corHex.toColor(),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFF0F4EF)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (logoRes != 0) {
+                        Icon(
+                            painter = painterResource(id = logoRes),
+                            contentDescription = conta.nome,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Text(
+                            text = conta.nome.take(2).uppercase(),
+                            color = conta.corHex.toColor(),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
+
+                Spacer(Modifier.width(12.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = conta.nome,
+                        color = CorTextoEdicao,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = iconeTipo),
+                            contentDescription = tituloTipo,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(14.dp)
+                        )
+
+                        Spacer(Modifier.width(5.dp))
+
+                        Text(
+                            text = tituloTipo,
+                            color = CorTextoPlaceholder,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        Spacer(Modifier.width(6.dp))
+
+                        Text(
+                            text = conta.saldoCentavos.formatarMoedaPtBr(),
+                            color = CorEdicao,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Switch(
+                    checked = conta.ativo,
+                    onCheckedChange = onAtivacaoAlterada,
+                    enabled = !salvando,
+                    modifier = Modifier.scale(0.85f)
+                )
             }
 
-            Spacer(
-                modifier = Modifier.width(12.dp)
-            )
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = conta.nome,
-                    color = CorTextoEdicao,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+            if (editarSaldo) {
+                HorizontalDivider(
+                    color = Color(0xFFE8EEEA),
+                    modifier = Modifier.padding(horizontal = 14.dp)
                 )
 
-                Spacer(
-                    modifier = Modifier.height(4.dp)
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        painter = painterResource(id = iconeTipo),
-                        contentDescription = tituloTipo,
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(14.dp)
+                    Text(
+                        text = "Ajustar saldo",
+                        color = CorTextoEdicao,
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleSmall
                     )
 
-                    Spacer(
-                        modifier = Modifier.width(5.dp)
+                    CampoValorAjusteSaldo(
+                        valorDigitos = saldoDigitos,
+                        enabled = !salvando,
+                        onValorAlterado = { digitos ->
+                            saldoDigitos = digitos
+                        }
                     )
 
                     Text(
-                        text = tituloTipo,
+                        text = "Informe o novo saldo total desta conta.",
                         color = CorTextoPlaceholder,
                         style = MaterialTheme.typography.bodySmall
                     )
 
-                    Spacer(
-                        modifier = Modifier.width(6.dp)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                focusManager.clearFocus()
+                                editarSaldo = false
+                            },
+                            enabled = !salvando,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "Cancelar",
+                                color = CorTextoEdicao
+                            )
+                        }
 
-                    Text(
-                        text = conta.saldoCentavos.formatarMoedaPtBr(),
-                        color = CorEdicao,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold
-                    )
+                        Button(
+                            onClick = {
+                                if (podeSalvar) {
+                                    focusManager.clearFocus()
+                                    salvando = true
+
+                                    onSalvarSaldo(
+                                        conta.id,
+                                        novoSaldo
+                                    ) { sucesso ->
+                                        salvando = false
+
+                                        if (sucesso) {
+                                            editarSaldo = false
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = podeSalvar,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = CorEdicao,
+                                contentColor = Color.White,
+                                disabledContainerColor = Color(0xFFD5DBD7),
+                                disabledContentColor = Color(0xFF7B8580)
+                            )
+                        ) {
+                            Text(
+                                text = if (salvando) {
+                                    "Salvando..."
+                                } else {
+                                    "Salvar saldo"
+                                },
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
-
-            Switch(
-                checked = conta.ativo,
-                onCheckedChange = onAtivacaoAlterada,
-                modifier = Modifier.scale(0.85f)
-            )
         }
     }
 
@@ -2788,6 +2935,105 @@ private fun LinhaContaSaldo(
             }
         )
     }
+}
+
+@Composable
+private fun CampoValorAjusteSaldo(
+    valorDigitos: String,
+    enabled: Boolean,
+    onValorAlterado: (String) -> Unit
+) {
+    val focusManager = LocalFocusManager.current
+    val valorFormatado = formatarValorAjusteSaldo(valorDigitos)
+
+    var campo by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = valorFormatado,
+                selection = TextRange(valorFormatado.length)
+            )
+        )
+    }
+
+    LaunchedEffect(valorFormatado) {
+        if (campo.text != valorFormatado) {
+            campo = TextFieldValue(
+                text = valorFormatado,
+                selection = TextRange(valorFormatado.length)
+            )
+        }
+    }
+
+    OutlinedTextField(
+        value = campo,
+        onValueChange = { novoCampo ->
+            if (novoCampo.text == campo.text) {
+                campo = campo.copy(
+                    selection = TextRange(campo.text.length)
+                )
+                return@OutlinedTextField
+            }
+
+            val digitos = novoCampo.text
+                .filter { it in '0'..'9' }
+                .trimStart('0')
+
+            if (
+                digitos.isNotEmpty() &&
+                digitos.toLongOrNull() == null
+            ) {
+                return@OutlinedTextField
+            }
+
+            val formato = formatarValorAjusteSaldo(digitos)
+
+            campo = TextFieldValue(
+                text = formato,
+                selection = TextRange(formato.length)
+            )
+
+            onValorAlterado(digitos)
+        },
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth(),
+        label = {
+            Text("Novo saldo")
+        },
+        prefix = {
+            Text("R$ ")
+        },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = ImeAction.Done
+        ),
+        keyboardActions = KeyboardActions(
+            onDone = {
+                focusManager.clearFocus()
+            }
+        ),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = CorEdicao,
+            focusedLabelColor = CorEdicao,
+            cursorColor = CorEdicao
+        )
+    )
+}
+
+private fun formatarValorAjusteSaldo(digitos: String): String {
+    val centavos = digitos.toLongOrNull() ?: 0L
+
+    return NumberFormat
+        .getNumberInstance(Locale("pt", "BR"))
+        .apply {
+            isGroupingUsed = true
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
+        .format(
+            java.math.BigDecimal.valueOf(centavos, 2)
+        )
 }
 
 @Composable

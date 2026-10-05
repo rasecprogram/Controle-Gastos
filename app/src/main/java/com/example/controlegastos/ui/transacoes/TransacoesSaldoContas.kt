@@ -51,6 +51,14 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.controlegastos.domain.model.ContaSaldo
 import com.example.controlegastos.domain.model.TipoContaSaldo
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 
 // =======================================================================
 // Domínio: Saldo & Contas
@@ -442,30 +450,11 @@ internal fun DialogTransferenciaSaldo(
                     modifier = Modifier.height(16.dp)
                 )
 
-                OutlinedTextField(
-                    value = textoValor.formatarValorTransferencia(),
-                    onValueChange = { novoTexto ->
-                        textoValor = novoTexto.filter { caractere ->
-                            caractere.isDigit()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = {
-                        Text("Valor da transferência")
-                    },
-                    placeholder = {
-                        Text("Ex.: 500,00")
-                    },
-                    prefix = {
-                        Text("R$ ")
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = CorPrincipal,
-                        focusedLabelColor = CorPrincipal,
-                        cursorColor = CorPrincipal
-                    )
+                CampoValorTransferencia(
+                    valorDigitos = textoValor,
+                    onValorAlterado = { digitos ->
+                        textoValor = digitos
+                    }
                 )
 
                 if (contaOrigem != null) {
@@ -569,6 +558,91 @@ internal fun DialogTransferenciaSaldo(
             }
         }
     }
+}
+
+@Composable
+private fun CampoValorTransferencia(
+    valorDigitos: String,
+    onValorAlterado: (String) -> Unit
+) {
+    val focusManager = LocalFocusManager.current
+    val valorFormatado = valorDigitos.formatarValorTransferencia()
+
+    var campo by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = valorFormatado,
+                selection = TextRange(valorFormatado.length)
+            )
+        )
+    }
+
+    LaunchedEffect(valorFormatado) {
+        if (campo.text != valorFormatado) {
+            campo = TextFieldValue(
+                text = valorFormatado,
+                selection = TextRange(valorFormatado.length)
+            )
+        }
+    }
+
+    OutlinedTextField(
+        value = campo,
+        onValueChange = { novoCampo ->
+            if (novoCampo.text == campo.text) {
+                campo = campo.copy(
+                    selection = TextRange(campo.text.length)
+                )
+                return@OutlinedTextField
+            }
+
+            val digitos = novoCampo.text
+                .filter { caractere ->
+                    caractere in '0'..'9'
+                }
+                .trimStart('0')
+
+            if (
+                digitos.isNotEmpty() &&
+                digitos.toLongOrNull() == null
+            ) {
+                return@OutlinedTextField
+            }
+
+            val textoFormatado =
+                digitos.formatarValorTransferencia()
+
+            campo = TextFieldValue(
+                text = textoFormatado,
+                selection = TextRange(textoFormatado.length)
+            )
+
+            onValorAlterado(digitos)
+        },
+        modifier = Modifier.fillMaxWidth(),
+        label = {
+            Text("Valor da transferência")
+        },
+        prefix = {
+            Text("R$ ")
+        },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = ImeAction.Done
+        ),
+        keyboardActions = KeyboardActions(
+            onDone = {
+                focusManager.clearFocus()
+            }
+        ),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Color(0xFF1B5B3A),
+            focusedLabelColor = Color(0xFF1B5B3A),
+            cursorColor = Color(0xFF1B5B3A)
+        )
+    )
 }
 
 @Composable

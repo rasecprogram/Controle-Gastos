@@ -56,6 +56,47 @@ class EdicaoViewModel @Inject constructor(
         )
     }
 
+    fun ajustarSaldoConta(
+        contaId: Int,
+        novoSaldoCentavos: Long,
+        aoConcluir: (Boolean) -> Unit
+    ) {
+        if (novoSaldoCentavos < 0L) {
+            formulario.value = formulario.value.copy(
+                mensagem = "O saldo não pode ser negativo."
+            )
+            aoConcluir(false)
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val atualizou = contaSaldoRepository.atualizarSaldo(
+                    contaId = contaId,
+                    novoSaldoCentavos = novoSaldoCentavos
+                )
+
+                formulario.value = formulario.value.copy(
+                    mensagem = if (atualizou) {
+                        "Saldo atualizado com sucesso."
+                    } else {
+                        "Não foi possível atualizar o saldo."
+                    }
+                )
+
+                aoConcluir(atualizou)
+            } catch (erro: kotlinx.coroutines.CancellationException) {
+                throw erro
+            } catch (_: Exception) {
+                formulario.value = formulario.value.copy(
+                    mensagem = "Ocorreu um erro ao atualizar o saldo."
+                )
+
+                aoConcluir(false)
+            }
+        }
+    }
+
     fun atualizarNomeCategoria(nome: String) {
         formulario.value = formulario.value.copy(
             novaCategoriaNome = nome,

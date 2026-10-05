@@ -41,19 +41,25 @@ internal fun String.paraCentavos(): Long {
 }
 
 internal fun String.formatarValorTransferencia(): String {
-    val valorCentavos = this
+    val centavos = this
         .filter { caractere ->
-            caractere.isDigit()
+            caractere in '0'..'9'
         }
         .toLongOrNull() ?: 0L
 
-    return NumberFormat
-        .getNumberInstance(Locale("pt", "BR"))
+    val valor = java.math.BigDecimal.valueOf(
+        centavos,
+        2
+    )
+
+    return java.text.NumberFormat
+        .getNumberInstance(java.util.Locale("pt", "BR"))
         .apply {
+            isGroupingUsed = true
             minimumFractionDigits = 2
             maximumFractionDigits = 2
         }
-        .format(valorCentavos / 100.0)
+        .format(valor)
 }
 
 internal fun String.ehEmojiLocal(): Boolean {

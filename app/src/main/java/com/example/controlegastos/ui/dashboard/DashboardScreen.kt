@@ -910,9 +910,6 @@ private fun FaturasProximas(
                     .filter { despesa ->
                         despesa.cartaoId == cartao.id
                     }
-                    .filter { despesa ->
-                        despesa.tipoLancamento != TipoLancamento.FIXA
-                    }
                     .sumOf { despesa ->
                         despesa.valor
                     }
