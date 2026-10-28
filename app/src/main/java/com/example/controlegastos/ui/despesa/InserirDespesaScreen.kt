@@ -237,6 +237,8 @@ fun InserirDespesaScreen(
             onSalvar = viewModel::salvarDespesa,
             onTipoLancamentoAlterado = viewModel::alterarTipoLancamento,
             onInteracaoForaDoCampo = ::limparFocoDoCampo,
+            onPixPagoAgoraAlterado = viewModel::alterarPixPagoAgora,
+            onContaPixSelecionada = viewModel::selecionarContaSaldo,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -255,6 +257,8 @@ private fun FormularioDespesa(
     onQuantidadeParcelasAlterada: (String) -> Unit,
     onTipoLancamentoAlterado: (TipoLancamento) -> Unit,
     onSalvar: () -> Unit,
+    onPixPagoAgoraAlterado: (Boolean) -> Unit,
+    onContaPixSelecionada: (Int?) -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -333,6 +337,26 @@ private fun FormularioDespesa(
                 )
             }
         }
+
+        if (
+            uiState.cartaoSelecionado?.marcaChave
+                ?.equals("pix", ignoreCase = true) == true
+        ) {
+            item {
+                OpcoesPagamentoPix(
+                    uiState = uiState,
+                    onPagoAgoraAlterado = { pagoAgora ->
+                        onInteracaoForaDoCampo()
+                        onPixPagoAgoraAlterado(pagoAgora)
+                    },
+                    onContaSelecionada = { contaId ->
+                        onInteracaoForaDoCampo()
+                        onContaPixSelecionada(contaId)
+                    }
+                )
+            }
+        }
+
         item {
             TipoLancamentoSelector(
                 tipoSelecionado = uiState.tipoLancamento,
@@ -1885,4 +1909,213 @@ private fun String.formatarMoedaComCursor(): String {
         }
 
     return "R$ ${formatter.format(valorCentavos / 100.0)}"
+}
+
+@Composable
+private fun OpcoesPagamentoPix(
+    uiState: InserirDespesaUiState,
+    onPagoAgoraAlterado: (Boolean) -> Unit,
+    onContaSelecionada: (Int?) -> Unit
+) {
+    var menuContasAberto by remember {
+        mutableStateOf(false)
+    }
+
+    val contasDisponiveis = uiState.contasSaldo.filter { conta ->
+        conta.ativo &&
+            (
+                conta.tipo ==
+                    com.example.controlegastos.domain.model.TipoContaSaldo.CONTA ||
+                    conta.tipo ==
+                    com.example.controlegastos.domain.model.TipoContaSaldo.CARTEIRA
+                )
+    }
+
+    val contaSelecionada = contasDisponiveis.firstOrNull { conta ->
+        conta.id == uiState.contaSaldoSelecionada?.id
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = Color.White,
+        border = BorderStroke(
+            1.dp,
+            Color(0xFFE1E7E3)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Como registrar este Pix?",
+                color = Color(0xFF123C3A),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !uiState.salvando) {
+                        onPagoAgoraAlterado(true)
+                    },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                androidx.compose.material3.RadioButton(
+                    selected = uiState.pixPagoAgora,
+                    onClick = null,
+                    enabled = !uiState.salvando
+                )
+
+                Spacer(Modifier.width(10.dp))
+
+                Text(
+                    text = "Pago",
+                    color = Color(0xFF123C3A)
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !uiState.salvando) {
+                        onPagoAgoraAlterado(false)
+                    },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                androidx.compose.material3.RadioButton(
+                    selected = !uiState.pixPagoAgora,
+                    onClick = null,
+                    enabled = !uiState.salvando
+                )
+
+                Spacer(Modifier.width(10.dp))
+
+                Text(
+                    text = "Faturar",
+                    color = Color(0xFF123C3A)
+                )
+            }
+
+            if (uiState.pixPagoAgora) {
+                HorizontalDivider(
+                    color = Color(0xFFE8EEEA)
+                )
+
+                Text(
+                    text = "Descontar de:",
+                    color = Color(0xFF66736E),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                if (contasDisponiveis.isEmpty()) {
+                    Text(
+                        text = "Cadastre uma conta ou carteira ativa " +
+                            "em Edição → Saldo, ou deixe o Pix pendente.",
+                        color = Color(0xFFB33A27),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    enabled = !uiState.salvando
+                                ) {
+                                    menuContasAberto = true
+                                },
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFFF4F7F3),
+                            border = BorderStroke(
+                                1.dp,
+                                Color(0xFFD1D9D4)
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment =
+                                    Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = contaSelecionada?.nome
+                                            ?: "Selecionar conta",
+                                        color = Color(0xFF123C3A)
+                                    )
+
+                                    contaSelecionada?.let { conta ->
+                                        Text(
+                                            text = "Saldo: " +
+                                                formatarCentavosParaMoeda(
+                                                    conta.saldoCentavos
+                                                ),
+                                            color = Color(0xFF66736E),
+                                            style = MaterialTheme
+                                                .typography.bodySmall
+                                        )
+                                    }
+                                }
+
+                                Icon(
+                                    imageVector =
+                                        Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Selecionar conta",
+                                    tint = Color(0xFF2F6F62)
+                                )
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = menuContasAberto,
+                            onDismissRequest = {
+                                menuContasAberto = false
+                            },
+                            modifier = Modifier.heightIn(max = 280.dp)
+                        ) {
+                            contasDisponiveis.forEach { conta ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "${conta.nome} — " +
+                                                formatarCentavosParaMoeda(
+                                                    conta.saldoCentavos
+                                                )
+                                        )
+                                    },
+                                    onClick = {
+                                        onContaSelecionada(conta.id)
+                                        menuContasAberto = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (uiState.tipoLancamento != TipoLancamento.UNICA) {
+                    Text(
+                        text = "Somente a primeira ocorrência será " +
+                            "marcada como paga e descontada agora. " +
+                            "As demais continuarão pendentes.",
+                        color = Color(0xFF66736E),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            } else {
+                Text(
+                    text = "O saldo não será alterado agora. " +
+                        "O lançamento ficará aguardando pagamento.",
+                    color = Color(0xFF66736E),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
 }

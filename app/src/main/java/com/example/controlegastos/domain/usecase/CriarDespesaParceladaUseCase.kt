@@ -39,6 +39,21 @@ class CriarDespesaParceladaUseCase @Inject constructor(
             .atZone(ZoneOffset.UTC)
             .toLocalDate()
 
+        if (novaDespesa.pagarPrimeiraOcorrencia) {
+            require(
+                novaDespesa.contaSaldoId != null &&
+                    novaDespesa.contaSaldoId > 0
+            ) {
+                "Selecione de qual conta saiu o pagamento."
+            }
+
+            require(
+                !dataCompraBase.isAfter(java.time.LocalDate.now())
+            ) {
+                "Para uma data futura, registre o Pix como pendente."
+            }
+        }
+
         val dataVencimentoBase = Instant
             .ofEpochMilli(novaDespesa.dataPrimeiroVencimento)
             .atZone(ZoneOffset.UTC)
@@ -83,6 +98,9 @@ class CriarDespesaParceladaUseCase @Inject constructor(
         )
 
         val despesas = (0 until quantidadeOcorrencias).map { indice ->
+            val pagaNoCadastro =
+                novaDespesa.pagarPrimeiraOcorrencia && indice == 0
+
             val numeroOcorrencia = indice + 1
             val valorOcorrencia = if (
                 novaDespesa.tipoLancamento == TipoLancamento.PARCELADA
@@ -113,8 +131,15 @@ class CriarDespesaParceladaUseCase @Inject constructor(
                     .atStartOfDay(ZoneOffset.UTC)
                     .toInstant()
                     .toEpochMilli(),
-                dataPagamento = null,
-                statusPago = false,
+                dataPagamento = if (pagaNoCadastro) {
+                    java.time.LocalDate.now()
+                        .atStartOfDay(ZoneOffset.UTC)
+                        .toInstant()
+                        .toEpochMilli()
+                } else {
+                    null
+                },
+                statusPago = pagaNoCadastro,
                 categoriaId = novaDespesa.categoriaId,
                 grupoParcelamentoId = null,
                 cartaoId = novaDespesa.cartaoId,

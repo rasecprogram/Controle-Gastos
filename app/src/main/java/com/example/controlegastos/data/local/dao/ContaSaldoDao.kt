@@ -42,4 +42,20 @@ interface ContaSaldoDao {
 
     @Query("UPDATE tb_contas_saldo SET saldo_centavos = :novoSaldo WHERE id = :contaId")
     suspend fun atualizarSaldo(contaId: Int, novoSaldo: Long): Int
+
+    @Query(
+        """
+    UPDATE tb_contas_saldo
+    SET saldo_centavos = saldo_centavos - :valorCentavos
+    WHERE id = :contaId
+      AND ativo = 1
+      AND tipo IN ('CONTA', 'CARTEIRA')
+      AND :valorCentavos > 0
+      AND saldo_centavos >= :valorCentavos
+    """
+    )
+    suspend fun debitarSaldoSeDisponivel(
+        contaId: Int,
+        valorCentavos: Long
+    ): Int
 }

@@ -86,10 +86,33 @@ class InserirDespesaViewModel @Inject constructor(
         )
     }
 
+    fun alterarPixPagoAgora(pagoAgora: Boolean) {
+        if (formulario.value.salvando) {
+            return
+        }
+
+        formulario.value = formulario.value.copy(
+            pixPagoAgora = pagoAgora,
+            contaSaldoSelecionada = null,
+            origemPagamento = null,
+            mensagemErro = null
+        )
+    }
+
     fun selecionarCartao(cartaoId: Int?) {
-        val cartao = uiState.value.cartoes.firstOrNull { it.id == cartaoId }
+        if (formulario.value.salvando) {
+            return
+        }
+
+        val cartao = uiState.value.cartoes.firstOrNull { cartao ->
+            cartao.id == cartaoId
+        }
+
         formulario.value = formulario.value.copy(
             cartaoSelecionado = cartao,
+            pixPagoAgora = true,
+            contaSaldoSelecionada = null,
+            origemPagamento = null,
             mensagemErro = null
         )
     }
@@ -153,8 +176,13 @@ class InserirDespesaViewModel @Inject constructor(
     }
 
     fun salvarDespesa() {
+        if (formulario.value.salvando) {
+            return
+        }
+
         val estadoAtual = formulario.value
         val categoria = estadoAtual.categoriaSelecionada
+
         if (categoria == null) {
             formulario.value = estadoAtual.copy(
                 mensagemErro = "Selecione uma categoria."
@@ -163,6 +191,7 @@ class InserirDespesaViewModel @Inject constructor(
         }
 
         val valorCentavos = estadoAtual.valorTexto.toLongOrNull()
+
         if (valorCentavos == null || valorCentavos <= 0L) {
             formulario.value = estadoAtual.copy(
                 mensagemErro = "Informe um valor válido."
@@ -172,40 +201,93 @@ class InserirDespesaViewModel @Inject constructor(
 
         val cartao = estadoAtual.cartaoSelecionado
 
-        // Define as origens e destinos corretos baseados na presença do cartão ou conta selecionada
-        val (finalContaSaldoId, finalOrigemPagamento) = if (cartao != null) {
-            null to OrigemPagamento.CARTAO
-        } else if (estadoAtual.contaSaldoSelecionada != null) {
-            estadoAtual.contaSaldoSelecionada.id to estadoAtual.origemPagamento
+        val ehPix = cartao?.marcaChave
+            ?.equals("pix", ignoreCase = true) == true
+
+        val pagarPixAgora = ehPix && estadoAtual.pixPagoAgora
+
+        val contaPix = if (pagarPixAgora) {
+            uiState.value.contasSaldo.firstOrNull { conta ->
+                conta.id == estadoAtual.contaSaldoSelecionada?.id &&
+                    conta.ativo &&
+                    (
+                        conta.tipo == TipoContaSaldo.CONTA ||
+                            conta.tipo == TipoContaSaldo.CARTEIRA)
+            }
         } else {
-            null to null
+            null
         }
 
-        val dataPrimeiroVencimento = if (cartao != null) {
-            calcularVencimentoCartao(
+        if (pagarPixAgora && contaPix == null) {
+            formulario.value = estadoAtual.copy(
+                mensagemErro = "Selecione de qual conta saiu o Pix."
+            )
+            return
+        }
+
+        if (
+            pagarPixAgora &&
+            estadoAtual.dataCompra.isAfter(LocalDate.now())
+        ) {
+            formulario.value = estadoAtual.copy(
+                mensagemErro = "Para uma data futura, deixe o Pix pendente."
+            )
+            return
+        }
+
+        val finalContaSaldoId = when {
+            pagarPixAgora -> contaPix?.id
+            cartao != null -> null
+            else -> estadoAtual.contaSaldoSelecionada?.id
+        }
+
+        val finalOrigemPagamento = when {
+            pagarPixAgora -> {
+                if (contaPix?.tipo == TipoContaSaldo.CARTEIRA) {
+                    OrigemPagamento.CARTEIRA
+                } else {
+                    OrigemPagamento.CONTA
+                }
+            }
+
+            cartao != null -> OrigemPagamento.CARTAO
+
+            else -> estadoAtual.origemPagamento
+        }
+
+        val dataPrimeiroVencimento = when {
+            ehPix -> estadoAtual.dataCompra
+
+            cartao != null -> calcularVencimentoCartao(
                 dataCompra = estadoAtual.dataCompra,
                 diasAntesVencimento = cartao.diasAntesVencimento,
                 diaVencimento = cartao.diaVencimento
             )
-        } else {
-            estadoAtual.dataCompra
+
+            else -> estadoAtual.dataCompra
         }
 
+        formulario.value = estadoAtual.copy(
+            salvando = true,
+            mensagemErro = null,
+            despesaSalvaComSucesso = false
+        )
+
         viewModelScope.launch {
-            formulario.value = estadoAtual.copy(
-                salvando = true,
-                mensagemErro = null,
-                despesaSalvaComSucesso = false
-            )
             try {
                 criarDespesaParceladaUseCase(
                     NovaDespesaParcelada(
                         descricao = estadoAtual.descricao,
                         valorTotalCentavos = valorCentavos,
-                        quantidadeParcelas = when (estadoAtual.tipoLancamento) {
+                        quantidadeParcelas = when (
+                            estadoAtual.tipoLancamento
+                        ) {
                             TipoLancamento.UNICA -> 1
-                            TipoLancamento.PARCELADA -> estadoAtual.quantidadeParcelas
-                            TipoLancamento.FIXA -> estadoAtual.quantidadeMesesFixa
+                            TipoLancamento.PARCELADA ->
+                                estadoAtual.quantidadeParcelas
+
+                            TipoLancamento.FIXA ->
+                                estadoAtual.quantidadeMesesFixa
                         },
                         dataCompra = estadoAtual.dataCompra
                             .atStartOfDay(ZoneOffset.UTC)
@@ -219,19 +301,29 @@ class InserirDespesaViewModel @Inject constructor(
                         cartaoId = cartao?.id,
                         contaSaldoId = finalContaSaldoId,
                         tipoLancamento = estadoAtual.tipoLancamento,
-                        origemPagamento = finalOrigemPagamento
+                        origemPagamento = finalOrigemPagamento,
+                        pagarPrimeiraOcorrencia = pagarPixAgora
                     )
                 )
+
                 formulario.value = InserirDespesaUiState(
                     dataCompra = estadoAtual.dataCompra,
                     despesaSalvaComSucesso = true
                 )
+            } catch (
+                erro: kotlinx.coroutines.CancellationException
+            ) {
+                formulario.value = formulario.value.copy(
+                    salvando = false
+                )
+                throw erro
             } catch (erro: IllegalArgumentException) {
                 formulario.value = estadoAtual.copy(
                     salvando = false,
-                    mensagemErro = erro.message ?: "Não foi possível salvar a despesa."
+                    mensagemErro = erro.message
+                        ?: "Não foi possível salvar a despesa."
                 )
-            } catch (erro: Exception) {
+            } catch (_: Exception) {
                 formulario.value = estadoAtual.copy(
                     salvando = false,
                     mensagemErro = "Ocorreu um erro ao salvar a despesa."

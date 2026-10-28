@@ -26,5 +26,6 @@ data class InserirDespesaUiState(
     val contasSaldo: List<ContaSaldo> = emptyList(),
     val contaSaldoSelecionada: ContaSaldo? = null,
     val origemPagamento: OrigemPagamento? = null,
+    val pixPagoAgora: Boolean = true,
     val carregandoContasSaldo: Boolean = true
 )

@@ -290,6 +290,40 @@ class DespesaRepositoryImpl @Inject constructor(
         despesas: List<Despesa>
     ): Int {
         return database.withTransaction {
+            val despesasPagas = despesas.filter { despesa ->
+                despesa.statusPago
+            }
+
+            require(
+                despesasPagas.all { despesa ->
+                    despesa.contaSaldoId != null &&
+                        despesa.valor > 0L
+                }
+            ) {
+                "Informe uma conta válida para descontar o pagamento."
+            }
+
+            val pagamentosPorConta = despesasPagas.groupBy { despesa ->
+                requireNotNull(despesa.contaSaldoId)
+            }
+
+            pagamentosPorConta.forEach { (contaId, pagamentos) ->
+                val valorDebito = pagamentos.fold(0L) { total, despesa ->
+                    Math.addExact(total, despesa.valor)
+                }
+
+                val atualizou = database
+                    .contaSaldoDao()
+                    .debitarSaldoSeDisponivel(
+                        contaId = contaId,
+                        valorCentavos = valorDebito
+                    )
+
+                require(atualizou == 1) {
+                    "A conta está indisponível ou não possui saldo suficiente."
+                }
+            }
+
             val grupoId = grupoParcelamentoDao
                 .inserir(grupo.toEntity())
                 .toInt()

@@ -10,5 +10,6 @@ data class NovaDespesaParcelada(
     val cartaoId: Int? = null,
     val tipoLancamento: TipoLancamento = TipoLancamento.UNICA,
     val contaSaldoId: Int? = null,
-    val origemPagamento: OrigemPagamento? = null
+    val origemPagamento: OrigemPagamento? = null,
+    val pagarPrimeiraOcorrencia: Boolean = false
 )
