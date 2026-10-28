@@ -134,6 +134,9 @@ import java.util.Locale
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.Snackbar
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 
 
 // ====== CORES / CONSTANTES DE ESTILO ======
@@ -163,6 +166,15 @@ fun EdicaoScreen(
         mutableStateOf<ContaSaldo?>(null)
     }
     val snackbarHostState = remember { SnackbarHostState() }
+    val density = LocalDensity.current
+
+    var alturaBarraInferiorPx by remember {
+        mutableIntStateOf(0)
+    }
+
+    val alturaBarraInferior = with(density) {
+        alturaBarraInferiorPx.toDp()
+    }
     var secaoSelecionada by remember { mutableIntStateOf(0) }
     var mostrarFormularioSaldo by remember { mutableStateOf(false) }
 
@@ -198,14 +210,7 @@ fun EdicaoScreen(
                     )
                 }
             },
-            snackbarHost = {
-                SnackbarHost(
-                    hostState = snackbarHostState,
-                    modifier = Modifier.padding(
-                        bottom = 110.dp
-                    )
-                )
-            },
+            snackbarHost = {},
 
 
 
@@ -430,7 +435,6 @@ fun EdicaoScreen(
                                                     val pincel = Paint().apply {
                                                         color = CorEdicao
                                                         style = PaintingStyle.Stroke
-                                                        strokeWidth = 1.4f * density
                                                         pathEffect = PathEffect.dashPathEffect(
                                                             intervals = intervalosTracejados,
                                                             phase = 0f
@@ -497,7 +501,11 @@ fun EdicaoScreen(
         }
 
         BarraNavegacaoInferior(
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .onSizeChanged { tamanho ->
+                    alturaBarraInferiorPx = tamanho.height
+                },
             selectedIndex = selectedIndex,
             onItemSelected = { index ->
                 selectedIndex = index
@@ -511,6 +519,25 @@ fun EdicaoScreen(
             },
             onAdicionarDespesa = onAdicionarDespesa
         )
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = alturaBarraInferior)
+                .padding(horizontal = 16.dp)
+        ) { snackbarData ->
+            Snackbar(
+                shape = RoundedCornerShape(8.dp),
+                containerColor = Color(0xFF323033),
+                contentColor = Color.White
+            ) {
+                Text(
+                    text = snackbarData.visuals.message,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
     }
     contaParaExcluir?.let { conta ->
         DialogExcluirContaSaldo(
@@ -2712,7 +2739,6 @@ private fun LinhaContaSaldo(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize()
             .combinedClickable(
                 onClick = {},
                 onDoubleClick = {
@@ -2740,7 +2766,11 @@ private fun LinhaContaSaldo(
             defaultElevation = 3.dp
         )
     ) {
-        Column {
+        Column(
+            modifier = Modifier
+                .animateContentSize()
+                .fillMaxWidth()
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
