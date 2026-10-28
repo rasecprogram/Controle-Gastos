@@ -74,6 +74,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -116,6 +117,10 @@ fun GastosScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var despesaParaExcluir by remember { mutableStateOf<DespesaDetalhada?>(null) }
+
+    var categoriaDetalheId by remember(uiState.mesSelecionado) {
+        mutableStateOf<Int?>(null)
+    }
 
     // Gastos está na posição 2 da barra de navegação inferior
     var selectedIndex by remember { mutableStateOf(2) }
@@ -228,6 +233,13 @@ fun GastosScreen(
         .fillMaxSize()
         .background(Color(0xFFEEF2EF))) {
         androidx.compose.material3.Scaffold(
+            modifier = Modifier.blur(
+                radius = if (categoriaDetalheId != null) {
+                    10.dp
+                } else {
+                    0.dp
+                }
+            ),
             containerColor = Color(0xFFEEF2EF),
             topBar = {
                 TopBarGastos(
@@ -462,7 +474,14 @@ fun GastosScreen(
                                             val corCategoria =
                                                 corDinamicaCategoria(gasto.categoriaId)
 
-                                            Column {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .clickable {
+                                                        categoriaDetalheId = gasto.categoriaId
+                                                    }
+                                            ) {
                                                 Row(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
@@ -720,6 +739,39 @@ fun GastosScreen(
             },
             onAdicionarDespesa = onAdicionarDespesa
         )
+
+        categoriaDetalheId?.let { categoriaId ->
+            val fluxoDetalhe = remember(
+                categoriaId,
+                uiState.mesSelecionado,
+                viewModel
+            ) {
+                viewModel.observarDetalheCategoria(
+                    categoriaId = categoriaId,
+                    mesAno = uiState.mesSelecionado
+                )
+            }
+
+            val detalhe by fluxoDetalhe.collectAsStateWithLifecycle(
+                initialValue = DetalheCategoriaUiState()
+            )
+
+            val categoriaNome = uiState.gastosPorCategoria
+                .firstOrNull { categoria ->
+                    categoria.categoriaId == categoriaId
+                }
+                ?.nomeCategoria
+                ?: "Categoria"
+
+            DialogoGastosCategoria(
+                categoriaNome = categoriaNome,
+                mesSelecionado = uiState.mesSelecionado,
+                estado = detalhe,
+                onFechar = {
+                    categoriaDetalheId = null
+                }
+            )
+        }
     }
 }
 

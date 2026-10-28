@@ -121,6 +121,37 @@ class GastosViewModel @Inject constructor(
         mesSelecionado.value = mesAno
     }
 
+    fun observarDetalheCategoria(
+        categoriaId: Int,
+        mesAno: YearMonth
+    ): Flow<DetalheCategoriaUiState> {
+        return combine(
+            despesaRepository.observarDespesasDetalhadasPorMes(
+                mes = mesAno.monthValue,
+                ano = mesAno.year
+            ),
+            cartaoRepository.observarTodos()
+        ) { despesas, cartoes ->
+            DetalheCategoriaUiState(
+                carregando = false,
+                despesas = despesas
+                    .filter { despesa ->
+                        despesa.categoriaId == categoriaId
+                    }
+                    .sortedWith(
+                        compareByDescending<
+                            com.example.controlegastos.domain.model.DespesaDetalhada
+                        > { despesa ->
+                            despesa.dataCompra
+                        }.thenByDescending { despesa ->
+                            despesa.id
+                        }
+                    ),
+                cartoes = cartoes
+            )
+        }
+    }
+
     fun excluirDespesa(despesaId: Int) {
         viewModelScope.launch {
             excluirDespesaUseCase(despesaId)
