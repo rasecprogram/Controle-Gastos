@@ -111,6 +111,8 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.controlegastos.domain.model.ContaSaldo
+import com.example.controlegastos.domain.model.TipoContaSaldo
 import com.example.controlegastos.domain.model.TipoLancamento
 import kotlinx.coroutines.flow.collectLatest
 import java.time.Instant
@@ -1917,17 +1919,11 @@ private fun OpcoesPagamentoPix(
     onPagoAgoraAlterado: (Boolean) -> Unit,
     onContaSelecionada: (Int?) -> Unit
 ) {
-    var menuContasAberto by remember {
-        mutableStateOf(false)
-    }
-
     val contasDisponiveis = uiState.contasSaldo.filter { conta ->
         conta.ativo &&
             (
-                conta.tipo ==
-                    com.example.controlegastos.domain.model.TipoContaSaldo.CONTA ||
-                    conta.tipo ==
-                    com.example.controlegastos.domain.model.TipoContaSaldo.CARTEIRA
+                conta.tipo == TipoContaSaldo.CONTA ||
+                    conta.tipo == TipoContaSaldo.CARTEIRA
                 )
     }
 
@@ -2018,85 +2014,12 @@ private fun OpcoesPagamentoPix(
                         style = MaterialTheme.typography.bodySmall
                     )
                 } else {
-                    Box(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(
-                                    enabled = !uiState.salvando
-                                ) {
-                                    menuContasAberto = true
-                                },
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFFF4F7F3),
-                            border = BorderStroke(
-                                1.dp,
-                                Color(0xFFD1D9D4)
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(14.dp),
-                                verticalAlignment =
-                                    Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = contaSelecionada?.nome
-                                            ?: "Selecionar conta",
-                                        color = Color(0xFF123C3A)
-                                    )
-
-                                    contaSelecionada?.let { conta ->
-                                        Text(
-                                            text = "Saldo: " +
-                                                formatarCentavosParaMoeda(
-                                                    conta.saldoCentavos
-                                                ),
-                                            color = Color(0xFF66736E),
-                                            style = MaterialTheme
-                                                .typography.bodySmall
-                                        )
-                                    }
-                                }
-
-                                Icon(
-                                    imageVector =
-                                        Icons.Default.KeyboardArrowDown,
-                                    contentDescription = "Selecionar conta",
-                                    tint = Color(0xFF2F6F62)
-                                )
-                            }
-                        }
-
-                        DropdownMenu(
-                            expanded = menuContasAberto,
-                            onDismissRequest = {
-                                menuContasAberto = false
-                            },
-                            modifier = Modifier.heightIn(max = 280.dp)
-                        ) {
-                            contasDisponiveis.forEach { conta ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = "${conta.nome} — " +
-                                                formatarCentavosParaMoeda(
-                                                    conta.saldoCentavos
-                                                )
-                                        )
-                                    },
-                                    onClick = {
-                                        onContaSelecionada(conta.id)
-                                        menuContasAberto = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    SeletorContaPixPadrao(
+                        contas = contasDisponiveis,
+                        contaSelecionada = contaSelecionada,
+                        habilitado = !uiState.salvando,
+                        onContaSelecionada = onContaSelecionada
+                    )
                 }
 
                 if (uiState.tipoLancamento != TipoLancamento.UNICA) {
@@ -2116,6 +2039,227 @@ private fun OpcoesPagamentoPix(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun SeletorContaPixPadrao(
+    contas: List<ContaSaldo>,
+    contaSelecionada: ContaSaldo?,
+    habilitado: Boolean,
+    onContaSelecionada: (Int?) -> Unit
+) {
+    var aberto by remember { mutableStateOf(false) }
+
+    LaunchedEffect(habilitado) {
+        if (!habilitado) {
+            aberto = false
+        }
+    }
+
+    val formatoCaixa = RoundedCornerShape(12.dp)
+    val corBorda = if (aberto) Color(0xFF2F6F62) else Color(0xFFD1D9D4)
+
+    Box(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = habilitado) {
+                    aberto = !aberto
+                },
+            shape = formatoCaixa,
+            color = Color(0xFFF4F7F3),
+            border = BorderStroke(
+                width = if (aberto) 2.dp else 1.dp,
+                color = corBorda
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (contaSelecionada != null) {
+                    ConteudoContaPix(
+                        conta = contaSelecionada,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    Text(
+                        text = "Selecionar conta",
+                        color = Color(0xFF9CA3AF),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Icon(
+                    imageVector = if (aberto) {
+                        Icons.Default.KeyboardArrowUp
+                    } else {
+                        Icons.Default.KeyboardArrowDown
+                    },
+                    contentDescription = "Selecionar conta",
+                    tint = Color(0xFF2F6F62)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = aberto,
+            onDismissRequest = { aberto = false },
+            shape = RoundedCornerShape(14.dp),
+            containerColor = Color.White,
+            tonalElevation = 0.dp,
+            shadowElevation = 6.dp,
+            border = BorderStroke(
+                width = 1.dp,
+                color = Color(0xFFE5E7EB)
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 280.dp)
+        ) {
+            contas.forEachIndexed { index, conta ->
+                val selecionada = conta.id == contaSelecionada?.id
+
+                DropdownMenuItem(
+                    text = {
+                        ConteudoContaPix(conta = conta)
+                    },
+                    onClick = {
+                        onContaSelecionada(conta.id)
+                        aberto = false
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            if (selecionada) {
+                                Color(0xFFEAF4EF)
+                            } else {
+                                Color.Transparent
+                            }
+                ),
+                    contentPadding = PaddingValues(
+                        horizontal = 14.dp,
+                        vertical = 10.dp
+                    )
+                )
+
+                if (index < contas.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 14.dp),
+                        thickness = 1.dp,
+                        color = Color(0xFFE5E7EB)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConteudoContaPix(
+    conta: ContaSaldo,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    fun obterResourceIcone(chave: String): Int {
+        val nomeArquivo = if (
+            chave.equals("cx", ignoreCase = true) ||
+            chave.contains("caixa", ignoreCase = true)
+        ) {
+            "cef"
+        } else {
+            chave
+        }
+
+        return context.resources.getIdentifier(
+            nomeArquivo.lowercase(),
+            "drawable",
+            context.packageName
+        )
+    }
+
+    val resId = remember(conta.instituicaoChave) {
+        obterResourceIcone(conta.instituicaoChave)
+    }
+
+    val ehPicPay = conta.nome.contains(
+        "PicPay",
+        ignoreCase = true
+    ) || conta.instituicaoChave.contains(
+        "picpay",
+        ignoreCase = true
+    )
+
+    val tipoLabel = when (conta.tipo) {
+        TipoContaSaldo.CONTA -> "Conta"
+        TipoContaSaldo.CARTEIRA -> "Carteira"
+        TipoContaSaldo.SALDO_RESERVADO -> "Cofre"
+    }
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFFE5E7EB),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (resId != 0) {
+                Image(
+                    painter = painterResource(id = resId),
+                    contentDescription = conta.nome,
+                    colorFilter = if (ehPicPay) {
+                        androidx.compose.ui.graphics.ColorFilter.tint(
+                            Color(0xFF04C563)
+                        )
+                    } else {
+                        null
+                    },
+                    modifier = Modifier.size(18.dp)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(conta.corHex.toComposeColor())
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = conta.nome,
+                color = Color(0xFF123C3A),
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Text(
+                text = "$tipoLabel · " +
+                    formatarCentavosParaMoeda(conta.saldoCentavos),
+                color = Color(0xFF66736E),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
