@@ -1,5 +1,8 @@
 package com.example.controlegastos.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class GastoPorCategoria(
     val categoriaId: Int,
     val nomeCategoria: String,

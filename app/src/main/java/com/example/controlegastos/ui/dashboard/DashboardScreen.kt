@@ -21,10 +21,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Category
@@ -76,6 +76,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.controlegastos.domain.model.DespesaDetalhada
 import com.example.controlegastos.domain.model.GastoPorCategoria
 import com.example.controlegastos.ui.components.BarraNavegacaoInferior
+import com.example.controlegastos.util.IconeResourceCache
 import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.time.Instant
@@ -136,41 +137,48 @@ fun DashboardScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                Column(
+                LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
-                        .verticalScroll(rememberScrollState())
                 ) {
-                    ConteudoDashboard(
-                        modifier = Modifier
-                            .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp),
-                        uiState = uiState
-                    )
+                    item {
+                        ConteudoDashboard(
+                            modifier = Modifier
+                                .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp),
+                            uiState = uiState
+                        )
+                    }
 
-                    FaturasProximas(
-                        cartoes = uiState.cartoes,
-                        transacoes = uiState.transacoesDoMes,
-                        visivel = uiState.numerosVisiveis,
-                        onVerTodas = {
-                            selectedIndex = 1
-                            onVerTodasTransacoes()
-                        },
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                    item {
+                        FaturasProximas(
+                            cartoes = uiState.cartoes,
+                            transacoes = uiState.transacoesDoMes,
+                            visivel = uiState.numerosVisiveis,
+                            onVerTodas = {
+                                selectedIndex = 1
+                                onVerTodasTransacoes()
+                            },
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
 
-                    PainelTransacoes(
-                        transacoes = uiState.transacoesDoMes,
-                        mesSelecionado = uiState.mesSelecionado.formatarMesAno(),
-                        numerosVisiveis = uiState.numerosVisiveis,
-                        cartoes = uiState.cartoes,
-                        onVerTodas = {
-                            selectedIndex = 1 // Transações corresponde ao índice 1
-                            onVerTodasTransacoes()
-                        }
-                    )
+                    item {
+                        PainelTransacoes(
+                            transacoes = uiState.transacoesDoMes,
+                            mesSelecionado = uiState.mesSelecionado.formatarMesAno(),
+                            numerosVisiveis = uiState.numerosVisiveis,
+                            cartoes = uiState.cartoes,
+                            onVerTodas = {
+                                selectedIndex = 1 // Transações corresponde ao índice 1
+                                onVerTodasTransacoes()
+                            }
+                        )
+                    }
 
-                    Spacer(modifier = Modifier.height(110.dp))
+                    item {
+                        Spacer(modifier = Modifier.height(110.dp))
+                    }
                 }
             }
         }
@@ -373,22 +381,28 @@ private fun ConteudoDashboard(
     modifier: Modifier,
     uiState: DashboardUiState
 ) {
-    val tetoSoma: Long = uiState.gastosPorCategoria
-        .mapNotNull { it.tetoMensal }
-        .sum()
-
-    val totalBudget: Long = when {
-        tetoSoma > 0L -> tetoSoma
-        uiState.resumoMensal.totalGasto > 0L -> {
-            uiState.resumoMensal.totalGasto * 2L
-        }
-        else -> 0L
+    val tetoSoma: Long = remember(uiState.gastosPorCategoria) {
+        uiState.gastosPorCategoria
+            .mapNotNull { it.tetoMensal }
+            .sum()
     }
 
-    val maiorDespesa = uiState.transacoesDoMes
-        .maxByOrNull { despesa ->
-            despesa.valor
+    val totalBudget: Long = remember(tetoSoma, uiState.resumoMensal.totalGasto) {
+        when {
+            tetoSoma > 0L -> tetoSoma
+            uiState.resumoMensal.totalGasto > 0L -> {
+                uiState.resumoMensal.totalGasto * 2L
+            }
+            else -> 0L
         }
+    }
+
+    val maiorDespesa = remember(uiState.transacoesDoMes) {
+        uiState.transacoesDoMes
+            .maxByOrNull { despesa ->
+                despesa.valor
+            }
+    }
 
     Column(
         modifier = modifier,
@@ -797,11 +811,7 @@ private fun IconeCategoriaDinamico(
     val chave = iconeChave ?: ""
     val context = LocalContext.current
     val resId = remember(chave) {
-        if (chave.isBlank()) 0 else context.resources.getIdentifier(
-            chave,
-            "drawable",
-            context.packageName
-        )
+        IconeResourceCache.resolverDrawable(context, chave)
     }
 
     if (resId != 0) {
@@ -863,8 +873,25 @@ private fun FaturasProximas(
     modifier: Modifier = Modifier,
     diasAvisoEmBreve: Int = 10
 ) {
+    val totaisPendentesPorCartao = remember(transacoes) {
+        transacoes
+            .asSequence()
+            .filter { despesa ->
+                !despesa.statusPago
+            }
+            .groupBy { despesa ->
+                despesa.cartaoId
+            }
+            .mapValues { (_, despesasPendentes) ->
+                despesasPendentes.sumOf { despesa ->
+                    despesa.valor
+                }
+            }
+    }
+
     val ativos = cartoes.filter { cartao ->
-        cartao.ativo
+        cartao.ativo &&
+            (totaisPendentesPorCartao[cartao.id] ?: 0L) > 0L
     }
 
     if (ativos.isEmpty()) return
@@ -905,14 +932,8 @@ private fun FaturasProximas(
                 .padding(horizontal = 16.dp)
         ) {
             ativos.forEach { cartao ->
-                val totalGastoDoCartao = transacoes
-                    .asSequence()
-                    .filter { despesa ->
-                        despesa.cartaoId == cartao.id
-                    }
-                    .sumOf { despesa ->
-                        despesa.valor
-                    }
+                val totalGastoDoCartao =
+                    totaisPendentesPorCartao[cartao.id] ?: 0L
 
                 val (daysUntil, _) = calcularProximoVencimento(
                     cartao.diaVencimento
@@ -980,15 +1001,7 @@ private fun FaturasProximas(
                             .lowercase(Locale("pt", "BR"))
 
                         val resId = remember(marcaKey) {
-                            if (marcaKey.isBlank()) {
-                                0
-                            } else {
-                                context.resources.getIdentifier(
-                                    marcaKey,
-                                    "drawable",
-                                    context.packageName
-                                )
-                            }
+                            IconeResourceCache.resolverDrawable(context, marcaKey)
                         }
 
                         val ehPicPay = cartao.nome.contains(
@@ -1273,11 +1286,7 @@ private fun PainelTransacoes(
                                         val marcaChaveLower = cartao.marcaChave.orEmpty()
                                             .lowercase(Locale("pt", "BR"))
                                         val resIdCard = remember(marcaChaveLower) {
-                                            if (marcaChaveLower.isBlank()) 0 else context.resources.getIdentifier(
-                                                marcaChaveLower,
-                                                "drawable",
-                                                context.packageName
-                                            )
+                                            IconeResourceCache.resolverDrawable(context, marcaChaveLower)
                                         }
                                         if (resIdCard != 0) {
                                             // Carrega a imagem real se existir
@@ -1341,13 +1350,41 @@ private fun PainelTransacoes(
 
                             Spacer(modifier = Modifier.width(12.dp))
 
-                            // Valor
-                            Text(
-                                text = desp.valor.formatarMoeda(numerosVisiveis),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color(0xFF143045)
-                            )
+                            // Valor e situação do pagamento
+                            Column(
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text(
+                                    text = desp.valor.formatarMoeda(numerosVisiveis),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF143045)
+                                )
+
+                                if (desp.statusPago) {
+                                    Spacer(
+                                        modifier = Modifier.height(5.dp)
+                                    )
+
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(Color(0xFFE8F5EC))
+                                            .padding(
+                                                horizontal = 8.dp,
+                                                vertical = 3.dp
+                                            )
+                                    ) {
+                                        Text(
+                                            text = "PAGO",
+                                            color = Color(0xFF1B6B4A),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+                            }
                         }
 
                         // Divisor APENAS DAQUI PARA FRENTE (alinhado com o texto, não de ponta a ponta)
@@ -1394,11 +1431,7 @@ private fun IconeCategoriaPill(
     val chave = iconeChave ?: ""
     val context = LocalContext.current
     val resId = remember(chave) {
-        if (chave.isBlank()) 0 else context.resources.getIdentifier(
-            chave,
-            "drawable",
-            context.packageName
-        )
+        IconeResourceCache.resolverDrawable(context, chave)
     }
 
     val cor = try {
@@ -1526,12 +1559,15 @@ private fun EstadoVazio(titulo: String, descricao: String) {
 }
 
 
+private val formatoMoedaPtBr: NumberFormat by lazy {
+    NumberFormat.getCurrencyInstance(Locale("pt", "BR"))
+}
+
 private fun Long.formatarMoeda(numerosVisiveis: Boolean): String {
     if (!numerosVisiveis) return "R$ •••••"
-    val nf = NumberFormat.getCurrencyInstance(Locale("pt", "BR"))
     // nf.format(…) pode inserir um NBSP (non-breaking space) entre o símbolo e o número.
     // Substituímos por espaço normal para evitar quebras inesperadas no layout.
-    return nf.format(this / 100.0).replace('\u00A0', ' ')
+    return formatoMoedaPtBr.format(this / 100.0).replace('\u00A0', ' ')
 }
 
 private fun Long.formatarData(): String = Instant.ofEpochMilli(this)

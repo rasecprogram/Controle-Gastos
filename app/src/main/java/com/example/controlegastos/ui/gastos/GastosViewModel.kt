@@ -54,7 +54,7 @@ class GastosViewModel @Inject constructor(
             }
         }
 
-    private val cartoesAtivosFlow = cartaoRepository.observarAtivos()
+    private val cartoesAtivosFlow = cartaoRepository.observarTodos()
 
     // Deriva um mês "válido" com base nos gastos agrupados (data_compra) e na seleção do usuário
     private val mesValidoFlow = combine(gastosAgrupadosPorMes, mesSelecionado) { gastosMensais, selecionado ->
@@ -68,7 +68,7 @@ class GastosViewModel @Inject constructor(
 
     // Consultas baseadas no mesValidoFlow (não no mesSelecionado direto)
     private val despesasDaFatura = mesValidoFlow.flatMapLatest { mesAno ->
-        despesaRepository.observarDespesasDetalhadasDaFatura(
+        despesaRepository.observarDespesasDetalhadasPorMes(
             mes = mesAno.monthValue,
             ano = mesAno.year
         )

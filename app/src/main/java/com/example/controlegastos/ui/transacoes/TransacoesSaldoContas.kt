@@ -210,7 +210,8 @@ internal fun CardSaldoPrincipal(
 @Composable
 internal fun CardConta(
     conta: ContaSaldo,
-    visivel: Boolean
+    visivel: Boolean,
+    modifier: Modifier = Modifier
 ) {
     // obter contexto para buscar drawable pelo nome
     val context = LocalContext.current
@@ -229,7 +230,7 @@ internal fun CardConta(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)

@@ -1,11 +1,13 @@
 package com.example.controlegastos.ui.dashboard
 
+import androidx.compose.runtime.Immutable
 import com.example.controlegastos.domain.model.Cartao
 import com.example.controlegastos.domain.model.DespesaDetalhada
 import com.example.controlegastos.domain.model.GastoPorCategoria
 import com.example.controlegastos.domain.model.ResumoMensal
 import java.time.YearMonth
 
+@Immutable
 data class DashboardUiState(
     val mesSelecionado: YearMonth = YearMonth.now(),
 

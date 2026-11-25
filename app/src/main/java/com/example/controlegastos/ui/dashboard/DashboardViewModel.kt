@@ -66,56 +66,77 @@ class DashboardViewModel @Inject constructor(
 
     private val totalDespesasCartaoFlow = despesaRepository.observarTotalDespesasCartao()
 
-    val uiState: StateFlow<DashboardUiState> = combine(
-        mesSelecionado,
-        numerosVisiveis,
-        nomeUsuarioFlow
-    ) { mesAno, valoresVisiveis, nome ->
-        Triple(mesAno, valoresVisiveis, nome)
-    }
-        .flatMapLatest { (mesAno, valoresVisiveis, nomeUsuario) ->
+    /**
+     * Dados que dependem do mês selecionado (resumo, gastos por categoria e
+     * despesas do mês). Apenas esta porção do estado é re-observada via
+     * [flatMapLatest] quando o mês muda — os três flows internos são
+     * combinados com um único [combine] (sem aninhamento adicional).
+     */
+    private data class DadosDoMes(
+        val resumo: ResumoMensal,
+        val gastosPorCategoria: List<com.example.controlegastos.domain.model.GastoPorCategoria>,
+        val transacoesDoMes: List<com.example.controlegastos.domain.model.DespesaDetalhada>
+    )
+
+    private val dadosDoMesFlow = mesSelecionado
+        .flatMapLatest { mesAno ->
             val resumoFlow = getResumoMensalUseCase(mes = mesAno.monthValue, ano = mesAno.year)
             val gastosPorCategoriaFlow = getGastosPorCategoriaUseCase(mes = mesAno.monthValue, ano = mesAno.year)
             val despesasDoMesFlow = despesaRepository.observarDespesasDetalhadasPorMes(mes = mesAno.monthValue, ano = mesAno.year)
 
             combine(resumoFlow, gastosPorCategoriaFlow, despesasDoMesFlow) { resumo, gastos, despesas ->
-                Triple(resumo, gastos, despesas)
-            }.flatMapLatest { (resumo, gastosPorCategoria, despesas) ->
-                combine(
-                    cartoesAtivosFlow,
-                    totalSaldoFlow,
-                    totalDespesasCartaoFlow
-                ) { cartoes, totalSaldo, totalDespesas ->
-                    DashboardUiState(
-                        mesSelecionado = mesAno,
-                        resumoMensal = resumo,
-                        gastosPorCategoria = gastosPorCategoria,
-                        transacoesDoMes = despesas.sortedByDescending { it.dataVencimento },
-                        cartoes = cartoes,
-                        totalSaldo = totalSaldo,
-                        totalDespesas = totalDespesas,
-                        numerosVisiveis = valoresVisiveis,
-                        nomeUsuario = nomeUsuario,
-                        carregando = false
+                DadosDoMes(
+                    resumo = resumo,
+                    gastosPorCategoria = gastos,
+                    transacoesDoMes = despesas.sortedByDescending { it.dataVencimento }
+                )
+            }.catch { e ->
+                emit(
+                    DadosDoMes(
+                        resumo = ResumoMensal(0L, 0L, 0L),
+                        gastosPorCategoria = emptyList(),
+                        transacoesDoMes = emptyList()
                     )
-                }.catch { e ->
-                    emit(
-                        DashboardUiState(
-                            mesSelecionado = mesAno,
-                            resumoMensal = ResumoMensal(0L, 0L, 0L),
-                            gastosPorCategoria = emptyList(),
-                            transacoesDoMes = emptyList(),
-                            cartoes = emptyList(),
-                            totalSaldo = 0L,
-                            totalDespesas = 0L,
-                            numerosVisiveis = valoresVisiveis,
-                            nomeUsuario = nomeUsuario,
-                            carregando = false
-                        )
-                    )
-                }
+                )
             }
         }
+
+    /**
+     * Dados independentes do mês selecionado (cartões ativos, saldo total e
+     * despesas de cartão). Combinados uma única vez, sem depender da cadeia
+     * de [flatMapLatest] do mês — evitando que uma mudança nesses flows
+     * reinicie a observação dos dados mensais, e vice-versa.
+     */
+    private val dadosIndependentesFlow = combine(
+        cartoesAtivosFlow,
+        totalSaldoFlow,
+        totalDespesasCartaoFlow
+    ) { cartoes, totalSaldo, totalDespesas ->
+        Triple(cartoes, totalSaldo, totalDespesas)
+    }
+
+    val uiState: StateFlow<DashboardUiState> = combine(
+        mesSelecionado,
+        dadosDoMesFlow,
+        dadosIndependentesFlow,
+        numerosVisiveis,
+        nomeUsuarioFlow
+    ) { mesAno, dadosDoMes, dadosIndependentes, valoresVisiveis, nomeUsuario ->
+        val (cartoes, totalSaldo, totalDespesas) = dadosIndependentes
+
+        DashboardUiState(
+            mesSelecionado = mesAno,
+            resumoMensal = dadosDoMes.resumo,
+            gastosPorCategoria = dadosDoMes.gastosPorCategoria,
+            transacoesDoMes = dadosDoMes.transacoesDoMes,
+            cartoes = cartoes,
+            totalSaldo = totalSaldo,
+            totalDespesas = totalDespesas,
+            numerosVisiveis = valoresVisiveis,
+            nomeUsuario = nomeUsuario,
+            carregando = false
+        )
+    }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),

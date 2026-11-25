@@ -21,6 +21,22 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            // AGP automatically aggregates all keep rule files found in
+            // src/main/keepRules/ (see app/src/main/keepRules/rules.keep)
+            // and passes them to R8 alongside the default rules below.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt")
+            )
+        }
+        debug {
+            isMinifyEnabled = false
+        }
+    }
+
     buildFeatures {
         buildConfig = true
         compose = true

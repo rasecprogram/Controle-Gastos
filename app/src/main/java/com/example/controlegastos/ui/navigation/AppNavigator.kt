@@ -32,7 +32,7 @@ import com.example.controlegastos.ui.transacoes.TransacoesScreen
 @Composable
 fun AppNavigator() {
     Navigator(
-        screen = DashboardVoyagerScreen()
+        screen = DashboardVoyagerScreen
     )
 }
 
@@ -42,45 +42,51 @@ private fun Navigator?.irParaAba(screen: Screen) {
     this?.replaceAll(screen)
 }
 
-private class DashboardVoyagerScreen : Screen {
+// As telas de abas (Dashboard/Transações/Gastos/Edição) são implementadas como
+// singletons (object) em vez de instâncias novas a cada navegação.
+// Isso permite que o Voyager reconheça a mesma "key" de tela ao usar
+// replaceAll() entre as abas, preservando o estado de composição salvo
+// (ex.: posição de scroll, estados lembrados) e evitando reconstruções
+// desnecessárias — sem alterar o comportamento de navegação existente.
+private object DashboardVoyagerScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
 
         DashboardScreen(
             onGerenciarCategorias = {
-                navigator?.push(CategoriasScreen())
+                navigator?.push(CategoriasScreen)
             },
             onAdicionarDespesa = {
-                navigator?.push(InserirDespesaVoyagerScreen())
+                navigator?.push(InserirDespesaVoyagerScreen)
             },
             onVerTodasTransacoes = {
-                navigator?.irParaAba(TransacoesVoyagerScreen())
+                navigator?.irParaAba(TransacoesVoyagerScreen)
             },
             onVerProjecoes = {
-                navigator?.push(TimelineVoyagerScreen())
+                navigator?.push(TimelineVoyagerScreen)
             },
             onVerPendencias = {
-                navigator?.irParaAba(GastosVoyagerScreen())
+                navigator?.irParaAba(GastosVoyagerScreen)
             },
             onAbrirConfiguracoes = {
-                navigator?.push(SettingsVoyagerScreen())
+                navigator?.push(SettingsVoyagerScreen)
             },
             onAbrirCartoes = {
-                navigator?.irParaAba(EdicaoVoyagerScreen())
+                navigator?.irParaAba(EdicaoVoyagerScreen)
             },
             onNavegarEdicao = {
                 // Navegação consistente para a aba Edição
-                navigator?.irParaAba(EdicaoVoyagerScreen())
+                navigator?.irParaAba(EdicaoVoyagerScreen)
             },
             onNavegarGastos = {
-                navigator?.irParaAba(GastosVoyagerScreen())
+                navigator?.irParaAba(GastosVoyagerScreen)
             }
         )
     }
 }
 
-private class TransacoesVoyagerScreen : Screen {
+private object TransacoesVoyagerScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
@@ -88,28 +94,28 @@ private class TransacoesVoyagerScreen : Screen {
         TransacoesScreen(
             // Volta explicitamente para a Dashboard.
             onVoltar = {
-                navigator?.replaceAll(DashboardVoyagerScreen())
+                navigator?.replaceAll(DashboardVoyagerScreen)
             },
             onNavegarInicio = {
-                navigator?.irParaAba(DashboardVoyagerScreen())
+                navigator?.irParaAba(DashboardVoyagerScreen)
             },
             onNavegarTransacoes = {
                 // Já está na tela de transações.
             },
             onNavegarGastos = {
-                navigator?.irParaAba(GastosVoyagerScreen())
+                navigator?.irParaAba(GastosVoyagerScreen)
             },
             onNavegarEdicao = {
-                navigator?.irParaAba(EdicaoVoyagerScreen())
+                navigator?.irParaAba(EdicaoVoyagerScreen)
             },
             onAdicionarDespesa = {
-                navigator?.push(InserirDespesaVoyagerScreen())
+                navigator?.push(InserirDespesaVoyagerScreen)
             }
         )
     }
 }
 
-private class GastosVoyagerScreen : Screen {
+private object GastosVoyagerScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
@@ -117,31 +123,31 @@ private class GastosVoyagerScreen : Screen {
         GastosScreen(
             // Volta explicitamente para a Dashboard.
             onVoltar = {
-                navigator?.replaceAll(DashboardVoyagerScreen())
+                navigator?.replaceAll(DashboardVoyagerScreen)
             },
             onAbrirEdicao = {
-                navigator?.push(EdicaoVoyagerScreen())
+                navigator?.push(EdicaoVoyagerScreen)
             },
             onNavegarInicio = {
-                navigator?.irParaAba(DashboardVoyagerScreen())
+                navigator?.irParaAba(DashboardVoyagerScreen)
             },
             onNavegarTransacoes = {
-                navigator?.irParaAba(TransacoesVoyagerScreen())
+                navigator?.irParaAba(TransacoesVoyagerScreen)
             },
             onNavegarGastos = {
                 // Já está na tela de gastos.
             },
             onNavegarEdicao = {
-                navigator?.irParaAba(EdicaoVoyagerScreen())
+                navigator?.irParaAba(EdicaoVoyagerScreen)
             },
             onAdicionarDespesa = {
-                navigator?.push(InserirDespesaVoyagerScreen())
+                navigator?.push(InserirDespesaVoyagerScreen)
             }
         )
     }
 }
 
-private class EdicaoVoyagerScreen : Screen {
+private object EdicaoVoyagerScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
@@ -149,29 +155,29 @@ private class EdicaoVoyagerScreen : Screen {
         EdicaoScreen(
             // Volta explicitamente para a Dashboard.
             onVoltar = {
-                navigator?.replaceAll(DashboardVoyagerScreen())
+                navigator?.replaceAll(DashboardVoyagerScreen)
             },
             onNavegarInicio = {
-                navigator?.irParaAba(DashboardVoyagerScreen())
+                navigator?.irParaAba(DashboardVoyagerScreen)
             },
             onNavegarTransacoes = {
-                navigator?.irParaAba(TransacoesVoyagerScreen())
+                navigator?.irParaAba(TransacoesVoyagerScreen)
             },
             onNavegarGastos = {
-                navigator?.irParaAba(GastosVoyagerScreen())
+                navigator?.irParaAba(GastosVoyagerScreen)
             },
             onNavegarEdicao = {
                 // Já está na tela de edição.
             },
             onAdicionarDespesa = {
-                navigator?.push(InserirDespesaVoyagerScreen())
+                navigator?.push(InserirDespesaVoyagerScreen)
             }
         )
     }
 }
 
 // Demais telas auxiliares continuam inalteradas abaixo.
-private class CategoriasScreen : Screen {
+private object CategoriasScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
@@ -184,7 +190,7 @@ private class CategoriasScreen : Screen {
     }
 }
 
-private class InserirDespesaVoyagerScreen : Screen {
+private object InserirDespesaVoyagerScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
@@ -197,7 +203,7 @@ private class InserirDespesaVoyagerScreen : Screen {
     }
 }
 
-private class TimelineVoyagerScreen : Screen {
+private object TimelineVoyagerScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
@@ -210,7 +216,7 @@ private class TimelineVoyagerScreen : Screen {
     }
 }
 
-private class SettingsVoyagerScreen : Screen {
+private object SettingsVoyagerScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
@@ -223,7 +229,7 @@ private class SettingsVoyagerScreen : Screen {
     }
 }
 
-private class PendenciasVoyagerScreen : Screen {
+private object PendenciasVoyagerScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current

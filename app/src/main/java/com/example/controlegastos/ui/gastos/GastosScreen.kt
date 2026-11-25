@@ -94,6 +94,7 @@ import com.example.controlegastos.domain.model.Cartao
 import com.example.controlegastos.domain.model.DespesaDetalhada
 import com.example.controlegastos.domain.model.GastoMensal
 import com.example.controlegastos.ui.components.BarraNavegacaoInferior
+import com.example.controlegastos.util.IconeResourceCache
 import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneOffset
@@ -124,6 +125,9 @@ fun GastosScreen(
 
     // Gastos está na posição 2 da barra de navegação inferior
     var selectedIndex by remember { mutableStateOf(2) }
+
+    var sortExpanded by remember { mutableStateOf(false) }
+    var sortMode by remember { mutableStateOf(SortMode.DATA) }
 
     if (despesaParaExcluir != null) {
         val despesa = despesaParaExcluir!!
@@ -553,10 +557,7 @@ fun GastosScreen(
                         }
                     }
 
-                    item {
-                        var sortExpanded by remember { mutableStateOf(false) }
-                        var sortMode by remember { mutableStateOf(SortMode.DATA) }
-
+                    item(key = "lancamentos_header") {
                         Column {
                             Row(
                                 modifier = Modifier
@@ -674,49 +675,57 @@ fun GastosScreen(
                             }
 
                             Spacer(modifier = Modifier.height(6.dp))
+                        }
+                    }
 
-                            val despesasOrdenadas: List<DespesaDetalhada> = when (sortMode) {
-                                SortMode.DATA -> uiState.despesasDoMes.sortedByDescending { it.dataCompra }
-                                SortMode.VALOR -> uiState.despesasDoMes.sortedByDescending { it.valor }
-                            }
+                    val despesasOrdenadas: List<DespesaDetalhada> = when (sortMode) {
+                        SortMode.DATA -> uiState.despesasDoMes.sortedByDescending { it.dataCompra }
+                        SortMode.VALOR -> uiState.despesasDoMes.sortedByDescending { it.valor }
+                    }
 
-                            fun dateOf(d: DespesaDetalhada) =
-                                Instant.ofEpochMilli(d.dataCompra).atZone(ZoneOffset.UTC)
-                                    .toLocalDate()
+                    fun dateOf(d: DespesaDetalhada) =
+                        Instant.ofEpochMilli(d.dataCompra).atZone(ZoneOffset.UTC)
+                            .toLocalDate()
 
-                            val despesasPorDia: Map<java.time.LocalDate, List<DespesaDetalhada>> =
-                                despesasOrdenadas.groupBy { desp -> dateOf(desp) }
+                    val despesasPorDia: Map<java.time.LocalDate, List<DespesaDetalhada>> =
+                        despesasOrdenadas.groupBy { desp -> dateOf(desp) }
 
-                            val diasOrdenados: List<java.time.LocalDate> =
-                                if (sortMode == SortMode.DATA) {
-                                    despesasPorDia.keys.sortedDescending()
-                                } else {
-                                    despesasOrdenadas.map { dateOf(it) }.distinct()
-                                }
+                    val diasOrdenados: List<java.time.LocalDate> =
+                        if (sortMode == SortMode.DATA) {
+                            despesasPorDia.keys.sortedDescending()
+                        } else {
+                            despesasOrdenadas.map { dateOf(it) }.distinct()
+                        }
 
-                            diasOrdenados.forEach { dia ->
-                                val listaDoDia = despesasOrdenadas.filter { dateOf(it) == dia }
-                                Text(
-                                    text = dia.format(
-                                        DateTimeFormatter.ofPattern(
-                                            "d 'de' MMMM",
-                                            Locale("pt", "BR")
-                                        )
-                                    ),
-                                    color = Color(0xFF6F7C76),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(vertical = 6.dp)
-                                )
+                    diasOrdenados.forEach { dia ->
+                        val listaDoDia = despesasOrdenadas.filter { dateOf(it) == dia }
 
-                                listaDoDia.forEach { desp ->
-                                    LancamentoItem(
-                                        despesa = desp,
-                                        cartoes = uiState.cartoes,
-                                        onLongPress = { despesaParaExcluir = desp },
-                                        modifier = Modifier.fillMaxWidth()
+                        item(key = "dia_$dia") {
+                            Text(
+                                text = dia.format(
+                                    DateTimeFormatter.ofPattern(
+                                        "d 'de' MMMM",
+                                        Locale("pt", "BR")
                                     )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
+                                ),
+                                color = Color(0xFF6F7C76),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(vertical = 6.dp)
+                            )
+                        }
+
+                        items(
+                            items = listaDoDia,
+                            key = { "desp_${it.id}" }
+                        ) { desp ->
+                            Column(modifier = Modifier.animateItem()) {
+                                LancamentoItem(
+                                    despesa = desp,
+                                    cartoes = uiState.cartoes,
+                                    onLongPress = { despesaParaExcluir = desp },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
                             }
                         }
                     }
@@ -839,11 +848,7 @@ private fun LancamentoItem(
                         val marcaChaveLower =
                             cartao.marcaChave.orEmpty().lowercase(Locale("pt", "BR"))
                         val resIdCard = remember(marcaChaveLower) {
-                            if (marcaChaveLower.isBlank()) 0 else context.resources.getIdentifier(
-                                marcaChaveLower,
-                                "drawable",
-                                context.packageName
-                            )
+                            IconeResourceCache.resolverDrawable(context, marcaChaveLower)
                         }
 
                         Row(
@@ -932,12 +937,52 @@ private fun LancamentoItem(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            Text(
-                text = despesa.valor.formatarMoeda(),
-                color = CorTextoGastos,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = despesa.valor.formatarMoeda(),
+                    color = CorTextoGastos,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(
+                    modifier = Modifier.height(5.dp)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                            if (despesa.statusPago) {
+                                Color(0xFFE8F5EC)
+                            } else {
+                                Color(0xFFFFF3E0)
+                            }
+                        )
+                        .padding(
+                            horizontal = 8.dp,
+                            vertical = 3.dp
+                        )
+                ) {
+                    Text(
+                        text = if (despesa.statusPago) {
+                            "PAGO"
+                        } else {
+                            "PENDENTE"
+                        },
+                        color = if (despesa.statusPago) {
+                            Color(0xFF1B6B4A)
+                        } else {
+                            Color(0xFFAD6800)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp
+                    )
+                }
+            }
         }
     }
 }
@@ -961,11 +1006,7 @@ private fun IconeCategoriaPill(
     val chave = iconeChave ?: ""
     val context = LocalContext.current
     val resId = remember(chave) {
-        if (chave.isBlank()) 0 else context.resources.getIdentifier(
-            chave,
-            "drawable",
-            context.packageName
-        )
+        IconeResourceCache.resolverDrawable(context, chave)
     }
 
     // Pega a cor exclusiva gerada pelo ID
@@ -1484,15 +1525,17 @@ fun TopBarGastos(
     }
 }
 
+private val formatoMoedaGastosPtBr: java.text.NumberFormat by lazy {
+    java.text.NumberFormat.getCurrencyInstance(Locale("pt", "BR"))
+}
+
 private fun Long.formatarMoeda(): String {
     val valor = this / 100.0
-    val nf = java.text.NumberFormat.getCurrencyInstance(Locale("pt", "BR"))
-    return nf.format(valor)
+    return formatoMoedaGastosPtBr.format(valor)
 }
 
 private fun Double.formatarMoeda(): String {
-    val nf = java.text.NumberFormat.getCurrencyInstance(Locale("pt", "BR"))
-    return nf.format(this)
+    return formatoMoedaGastosPtBr.format(this)
 }
 
 private fun Long.formatarDiaMes(): String {

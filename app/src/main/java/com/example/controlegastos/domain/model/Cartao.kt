@@ -1,5 +1,8 @@
 package com.example.controlegastos.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Cartao(
     val id: Int = 0,
     val nome: String,

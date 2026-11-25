@@ -1,10 +1,12 @@
 package com.example.controlegastos.ui.transacoes
 
+import androidx.compose.runtime.Immutable
 import com.example.controlegastos.domain.model.ContaSaldo
 import com.example.controlegastos.domain.model.DespesaDetalhada
 import com.example.controlegastos.domain.model.FaturaCartao
 import java.time.YearMonth
 
+@Immutable
 data class TransacoesUiState(
     val carregando: Boolean = true,
 

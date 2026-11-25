@@ -227,7 +227,8 @@ internal fun CardFaturaCompleta(
     visivel: Boolean,
     onExpandir: () -> Unit,
     onPagar: () -> Unit,
-    onVerFatura: () -> Unit
+    onVerFatura: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val cartao = fatura.cartao
     val limite = cartao.limiteCentavos
@@ -241,11 +242,11 @@ internal fun CardFaturaCompleta(
 
     // Aumenta a altura mínima do card quando a fatura NÃO está paga, para evitar compressão.
     val cardModifier = if (!fatura.paga) {
-        Modifier
+        modifier
             .fillMaxWidth()
             .heightIn(min = 180.dp)
     } else {
-        Modifier.fillMaxWidth()
+        modifier.fillMaxWidth()
     }
 
     Card(

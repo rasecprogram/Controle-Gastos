@@ -1,5 +1,8 @@
 package com.example.controlegastos.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Despesa(
     val id: Int,
     val valor: Long,

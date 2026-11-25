@@ -126,6 +126,7 @@ import com.example.controlegastos.domain.model.TipoContaSaldo
 import com.example.controlegastos.domain.util.calcularDataFechamento
 import com.example.controlegastos.domain.util.criarDataVencimento
 import com.example.controlegastos.ui.components.BarraNavegacaoInferior
+import com.example.controlegastos.util.IconeResourceCache
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.YearMonth
@@ -783,11 +784,7 @@ private fun NovoCartaoForm(
                                 instituicao.chave
                             }
 
-                        context.resources.getIdentifier(
-                            nomeArquivo,
-                            "drawable",
-                            context.packageName
-                        )
+                        IconeResourceCache.resolverDrawable(context, nomeArquivo)
                     }
 
                     val iconeTint = if (instituicao.chave == "picpay") {
@@ -1376,7 +1373,7 @@ private fun CategoriaPill(
 
     val context = LocalContext.current
     val resId = remember(categoria.iconeChave) {
-        context.resources.getIdentifier(categoria.iconeChave, "drawable", context.packageName)
+        IconeResourceCache.resolverDrawable(context, categoria.iconeChave)
     }
 
     Box(modifier = Modifier.wrapContentSize(), contentAlignment = Alignment.TopEnd) {
@@ -1733,15 +1730,7 @@ private fun NovoCategoriaCard(
                         val context = LocalContext.current
 
                         val resId = remember(iconeSelecionado) {
-                            if (iconeSelecionado.isBlank()) {
-                                0
-                            } else {
-                                context.resources.getIdentifier(
-                                    iconeSelecionado,
-                                    "drawable",
-                                    context.packageName
-                                )
-                            }
+                            IconeResourceCache.resolverDrawable(context, iconeSelecionado)
                         }
 
                         when {
@@ -1968,11 +1957,7 @@ private fun EmojiPickerDropdown(
         ) {
             emojis.forEach { emoji ->
                 val resId = remember(emoji) {
-                    context.resources.getIdentifier(
-                        emoji,
-                        "drawable",
-                        context.packageName
-                    )
+                    IconeResourceCache.resolverDrawable(context, emoji)
                 }
 
                 Box(
@@ -2086,7 +2071,7 @@ private fun CartaoDetalhado(
                     } else {
                         cartao.marcaChave
                     }
-                    context.resources.getIdentifier(nomeArquivo, "drawable", context.packageName)
+                    IconeResourceCache.resolverDrawable(context, nomeArquivo)
                 }
 
                 Box(
@@ -2402,7 +2387,7 @@ private fun CartaoInativoRow(
         } else {
             cartao.marcaChave
         }
-        context.resources.getIdentifier(nomeArquivo, "drawable", context.packageName)
+        IconeResourceCache.resolverDrawable(context, nomeArquivo)
     }
 
     Row(
@@ -2729,11 +2714,7 @@ private fun LinhaContaSaldo(
             else -> conta.instituicaoChave
         }
 
-        context.resources.getIdentifier(
-            nomeArquivo,
-            "drawable",
-            context.packageName
-        )
+        IconeResourceCache.resolverDrawable(context, nomeArquivo)
     }
 
     Card(
@@ -3287,11 +3268,7 @@ private fun FormularioContaSaldo(
                             instituicao.chave
                         }
 
-                        context.resources.getIdentifier(
-                            nomeArquivo,
-                            "drawable",
-                            context.packageName
-                        )
+                        IconeResourceCache.resolverDrawable(context, nomeArquivo)
                     }
 
                     Box(
@@ -3635,10 +3612,10 @@ private fun String.toColor(): Color = try {
     CorEdicao
 }
 
-private fun Long.formatarMoedaPtBr(): String {
-    val formatter = NumberFormat.getCurrencyInstance(
-        Locale("pt", "BR")
-    )
+private val formatoMoedaEdicaoPtBr: NumberFormat by lazy {
+    NumberFormat.getCurrencyInstance(Locale("pt", "BR"))
+}
 
-    return formatter.format(this / 100.0)
+private fun Long.formatarMoedaPtBr(): String {
+    return formatoMoedaEdicaoPtBr.format(this / 100.0)
 }

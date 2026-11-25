@@ -194,7 +194,8 @@ fun TransacoesScreen(
                 ) { conta ->
                     CardConta(
                         conta = conta,
-                        visivel = uiState.valoresVisiveis
+                        visivel = uiState.valoresVisiveis,
+                        modifier = Modifier.animateItem()
                     )
                 }
 
@@ -334,7 +335,8 @@ fun TransacoesScreen(
                         },
                         onVerFatura = {
                             faturaParaVer = fatura
-                        }
+                        },
+                        modifier = Modifier.animateItem()
                     )
                 }
 
